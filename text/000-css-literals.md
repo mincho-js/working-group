@@ -114,7 +114,7 @@ export const myCss = css({
 export const myCss = css({
   // In Firefox and IE the "overflow: overlay" will be
   // ignored and the "overflow: auto" will be applied
-  overflow: ['auto', 'overlay']
+  overflow: ["auto", "overlay"]
 });
 ```
 
@@ -176,7 +176,7 @@ export const myCss = css({
 **Convert to Vanilla Extract:**
 ```typescript
 export const myCss = style({
-  transform: ["scale(2) rotate(28.64deg)", "scale(2) rotate(15deg)"]
+  transform: ["scale(2) rotate(28.64deg)", "scale(2) rotate(0.5rad)"]
 });
 ```
 
@@ -493,8 +493,8 @@ export const myCss = style({
 **Code:**
 ```typescript
 const base = css({ padding: 12 });
-const primary = css([base, { background: 'blue' }]);
-const secondary = css([base, { background: 'aqua' }]);
+const primary = css([base, { background: "blue" }]);
+const secondary = css([base, { background: "aqua" }]);
 ```
 
 **Compiled:**
@@ -628,7 +628,7 @@ export const child = css({
 });
 
 export const parent = css({
-  background: "yellow:,
+  background: "yellow",
   selectors: {
     [`&:has(${child})`]: {
       padding: 10
@@ -639,8 +639,10 @@ export const parent = css({
 
 # Rationale and alternatives
 
-The closest to our task is [emotion-to-vanilla-extract](https://github.com/penx/emotion-to-vanilla-extract), but it's mostly different except for the nesting.
+The goal of this RFC is to make writing CSS in Typescript as natural as it was in the first place.  
+So [CSS Modules](https://github.com/css-modules/css-modules) or [preprocessors](https://github.com/awesome-css-group/awesome-css#preprocessors-pill) is a very big competitor and substitute.
 
+In the CSS in JS world, The closest to our task is [emotion-to-vanilla-extract](https://github.com/penx/emotion-to-vanilla-extract), but it's mostly different except for the nesting.  
 Our solution is much cleaner.
 
 # Unresolved questions
@@ -650,10 +652,14 @@ Our solution is much cleaner.
 Is automatically converting the right design?  
 I think the prefix is good, but I'm not sure about the `camelCase` to `kebab-case` conversion.
 
+## Other preprocessors feature
+
+Nested syntax([property](https://sass-lang.com/documentation/style-rules/declarations/#nesting), [selector](https://sass-lang.com/documentation/style-rules/parent-selector/)) in SCSS, referential syntax([property](https://stylus-lang.com/docs/variables.html#property-lookup), [selector](https://stylus-lang.com/docs/selectors.html#partial-reference)) in Stylus, etc. is still powerful.
+
 # Future possibilities
 
-## Nesting
-Nested syntax is intentionally left out because the transform rules are quite complex.  
+## Nesting and Reference
+Nested and referential syntax is intentionally left out because the transform rules are quite complex.  
 I'm trying to solve the problem of nesting of properties as well as selectors.
 
 This will be the topic of the next RFC I write.
