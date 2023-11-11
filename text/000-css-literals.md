@@ -529,9 +529,9 @@ However, it is possible to implement it well using [Template Literal Types](http
 type Rule = "media" | "supports" | "container" | "layer"; // And more..?
 type CSSNode = {};
 type AtRules = {
-  [key in Rule as `@${key}`]: { [key in string]: CSSNode };
+  [key in Rule as `@${key}`]?: { [key in string]?: CSSNode };
 } & {
-  [key in Rule as `@${key} ${string}`]: CSSNode;
+  [key in Rule as `@${key} ${string}`]?: CSSNode;
 };
 
 const myCss: AtRules = {
@@ -549,7 +549,7 @@ const myCss: AtRules = {
   "@supports (display: grid)": {
     display: "grid"
   }
-}
+};
 ```
 
 If it turns out to be difficult, let's go in a different direction.
