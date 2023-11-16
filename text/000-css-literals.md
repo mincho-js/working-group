@@ -223,8 +223,9 @@ The conversion to prefix and `kebab-case` happens automatically.
 **Code:**
 ```typescript
 export const myCss = css({
-  $myGlobalVariable: "purple",
-  color: "$myGlobalVariable"
+  $myCssVariable: "purple",
+  color: "$myCssVariable",
+  backgroundColor: "$myOtherVariable(red)"
 });
 ```
 
@@ -232,17 +233,19 @@ export const myCss = css({
 ```typescript
 export const myCss = style({
   vars: {
-    "--my-global-variable": "purple"
+    "--my-css-variable": "purple"
   },
-  color: "var(--my-global-variable)"
+  color: "var(--my-css-variable)",
+  backgroundColor: "var(--my-other-variable, red)"
 });
 ```
 
 **Compiled:**
 ```css
 .[FILE_NAME]_myCSS__[HASH] {
-  --my-global-variable: purple;
-  color: var(--my-global-variable);
+  --my-css-variable: purple;
+  color: var(--my-css-variable);
+  background-color: var(--my-other-variable, red);
 }
 ```
 
