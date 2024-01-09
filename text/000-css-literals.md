@@ -430,7 +430,7 @@ export const myCss = css({
   // Fontface
   fontFamily: {
     src: "local('Comic Sans MS')"
-  }
+  },
   // Fontface with multiple
   fontfamily$: [{ src: "local('Noto Sans')" }, { src: "local('Gentium')" }]
 });
@@ -593,7 +593,7 @@ Fortunately, the color picker extension([VS Code](https://marketplace.visualstud
 
 That it inherits all of Vanilla Extract's constraints.
 ```typescript
-const invalid = style({
+const invalid = css({
   // ❌ ERROR: Targetting `a[href]`
   "& a[href]": {...},
 
@@ -602,15 +602,15 @@ const invalid = style({
 });
 
 // Also Invalid example:
-export const child = style({});
-export const parent = style({
+export const child = css({});
+export const parent = css({
   // ❌ ERROR: Targetting `child` from `parent`
   [`& ${child}`]: {...}
 });
 
 // Valid example:
-export const parent = style({});
-export const child = style({
+export const parent = css({});
+export const child = css({
   [`${parent} &`]: {...}
 });
 ```
