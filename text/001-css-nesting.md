@@ -6,13 +6,14 @@ Suggestions for better nesting and referencing.
 # Motivation
 - Take advantage of preprocessors
 - Finds as many alternatives as possible within the parsing syntax of Javascript
-- Less nesting is better.
+- Keep related properties or rules close by to make it easier to understand the context
 
 # Guide-level explanation
-1. Deeper nesting is bad and should be encouraged to be reduced.
-2. With nesting, you can isolate or reuse contexts.
-3. Nesting should be automatically hosted.
-4. Properties and variants can be referenced..
+1. Maintain a locality of thinking.
+2. Deeper nesting is bad and should be encouraged to be reduced.
+3. With nesting, you can isolate or reuse contexts.
+4. Nesting should be automatically hosted.
+5. Properties and variants can be referenced.
 
 ## 1. Simple Attribute Selectors
 Allow toplevel [`attribute selector`](https://developer.mozilla.org/en-US/docs/Web/CSS/Attribute_selectors) to prevent deep nesting.
