@@ -62,15 +62,18 @@ export const myCss = style({
 ## 2. Nested Properties
 Inspired by the [SCSS's nested properties](https://sass-lang.com/documentation/style-rules/declarations/#nesting), this feature allows nesting for property names.
 
-Reduce redundancy and make your context stand out.
+Reduce redundancy and make your context stand out. 
+
+Uppercase it to distinguish it from `Property based condition`.
+[`Vendor Prefixes`](./000-css-literals.md#5-vendor-prefixes) exists only in Top level, while `Nested Properties` exists only in nesting, so you can tell them apart.
 
 **Code:**
 ```typescript
 export const myCss = css({
   transition: {
-    property: "font-size",
-    duration: "4s",
-    delay: "2s"
+    Property: "font-size",
+    Duration: "4s",
+    Delay: "2s"
   }
 });
 ```
@@ -87,9 +90,9 @@ export const myCss = style({
 **Compiled:**
 ```css
 .[FILE_NAME]_myCSS__[HASH] {
-  property: font-size;
-  duration: 4s;
-  delay: 2s;
+  transition-property: font-size;
+  transition-duration: 4s;
+  transition-delay: 2s;
 }
 ```
 
