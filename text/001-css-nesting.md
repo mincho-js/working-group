@@ -452,6 +452,135 @@ globalCSS(`${myCss["primary"]} ${myCss["secondary"]}`, {
 # Reference-level explanation
 It's more complicated, but can be implemented almost exactly like [CSS Literals](./000-css-literals.md).
 
+## Stabilize nesting order
+
+To resolve complex nested structures, it is recommended to order them when nested.
+
+This isn't a problem if each element appears only once, for example.
+
+**Code:**
+```typescript
+export const myCss1 = css({
+  "nav li > &": {
+    "@media (prefers-color-scheme: dark)": {
+      background: "red"
+    }
+  }
+});
+
+const myCss2 = css({
+  "nav li > &": {
+    "@media (prefers-color-scheme: dark)": {
+      _hover: {
+        background: "red"
+      }
+    }
+  }
+});
+```
+
+**Convert to Vanilla Extract:**
+```typescript
+export const myCss1 = style({
+  selectors: {
+    "nav li > &": {
+      "@media": {
+        "(prefers-color-scheme: dark)": {
+          background: "red"
+        }
+      }
+    }
+  }
+});
+
+export const myCss2 = style({
+  "@media": {
+    "(prefers-color-scheme: dark)": {
+      selectors: {
+        "nav li > &": {
+          background: "red"
+        }
+      }
+    }
+  }
+});
+```
+
+But what about the following cases?
+
+**Code:**
+```typescript
+const myCss = css({
+  "nav li > &": {
+    "@media (prefers-color-scheme: dark)": {
+      _hover: {
+        background: "red"
+      }
+    }
+  }
+});
+```
+
+**Convert to Vanilla Extract:**
+```typescript
+export const myCss = style({
+  // ???
+});
+```
+
+Therefore, we need to force a specific order to resolve them.
+
+### Targets
+
+At-Rules(`@media`, `@supports`, `@container`, `@layer`) and selectors.
+
+1. `@media`: Apply styles based on screen size or device characteristics.
+2. `@supports:` Check for support for specific features first.
+3. `@container`: Apply styles based on the size or characteristics of a specific container.
+4. `@layer`: Define the priority of the style.
+5. selectors: Apply the actual style.
+
+Nested properties are not a problem because they are automatically transformed to have a flattened structure.
+
+### Considerations
+
+Think about performance and readability.  
+Overall, it makes sense to gradually narrow the scope and conditions for styles.
+
+- Performance: It is advantageous to have conditions that do not change at low levels and conditions that change frequently at deep levels.
+- Readability: The more similar contexts they have, the more they should be at the same level.
+
+**Nesting for performance**  
+This is a generalized approach, and we ***haven't done any specific benchmarks yet***.
+1. `@layer`: It defines the entire style sheet structure, so it helps the browser prioritize it when it's on the outermost part.
+2. `@supports`: If it's on top, browser can avoid unnecessary style calculations.
+3. `@media`: Apply styles based on screen size or device characteristics.
+4. `@container`: It's in `@media` because it depends on the size and characteristics of the specific element, not the whole.
+5. selectors: It is evaluated most frequently, so it should be the innermost.
+
+However, the order of `@media` and `@container` can change depending on your project.  
+Since it applies styles based on the size of a particular element, it can be placed at the top to reduce unnecessary media query calculations.  
+If container queries are used more frequently, and the size of the container changes frequently independent of the viewport, it may be advantageous to have `@container` on top of `@media`.
+
+Also, even if `@supports` is inside, it may not have a significant impact on performance.  
+In fact, for Firefox, the representation inside `@supports` is [not re-evaluated unless](https://github.com/black7375/Firefox-UI-Fix/blob/master/docs/Restrictions.md#supports) it is reloaded.
+(Only need to check once on page load)
+
+**Nesting for readability**
+1. `@layer`: Since this is the structure of the entire style sheet, it makes sense that it is declared first.
+2. `@container`: Since it is applied based on the conditions of a specific element, it is better to be on the outside.
+3. `@media`: It is recommended that styles branch based on conditions inside the container.
+4. `@supports`: It checks for support of certain CSS features, so it should be inside. Near `@supports`, there might be a style for fallback.
+5. selectors: This is the most specific collection of CSS properties and values and should be the innermost.
+
+### Decision
+
+Follow order of `Nesting for performance`.  
+This is because we think it's better to consider performance as the library responsible for the overall CSS output.  
+I also don't think it's in any order that is significantly less readable.
+
+This decision can be overturned later based on benchmark results, ease of debugging, etc.
+
 # Drawbacks
 Nested syntax reduces duplication, but if abused, it can be hard to know the context.
 
