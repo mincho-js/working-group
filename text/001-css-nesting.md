@@ -583,18 +583,58 @@ This decision can be overturned later based on benchmark results, ease of debugg
 
 ### Exmaples
 
-It sounds complicated, but it's always transfiled with the following structure:
+You can now answer the question.
 
+**Code:**
+```typescript
+const myCss = css({
+  "nav li > &": {
+    "@media (prefers-color-scheme: dark)": {
+      _hover: {
+        background: "red"
+      }
+    }
+  }
+});
+```
+
+**Convert to Vanilla Extract:**
 ```typescript
 export const myCss = style({
-  "@layout": {
+  "@media": {
+    "(prefers-color-scheme: dark)": {
+      selectors: {
+        "nav li > &:hover": {
+          background: "red"
+        }
+      }
+    }
+  }
+});
+```
+
+It sounds complicated, but it's always transfiled with the following structure:
+
+**Convert to Vanilla Extract:**
+```typescript
+export const myCss = style({
+  // Level1: @layer
+  "@layer": {
     "framework.layout": {
+
+      // Level2: @supports
       "@supports": {
         "gap: 1rem": {
+
+          // Level3: @media
           "@media": {
             "(prefers-color-scheme: dark) and (prefers-reduced-motion)": {
+
+              // Level4: @container
               "@container": {
                 "(min-width: 500px)": {
+
+                  // Level5: selectors
                   "selectors": {
                     "nav li > &:hover": {
                       background: "red"
