@@ -506,11 +506,11 @@ const secondary = css([base, { background: "aqua" }]);
   padding: 12px;
 }
 
-.[FILE_NAME]_base__[HASH] {
+.[FILE_NAME]_primary__[HASH] {
   background: blue;
 }
 
-.[FILE_NAME]_base__[HASH] {
+.[FILE_NAME]_secondary__[HASH] {
   background: aqua;
 }
 ```

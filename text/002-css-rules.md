@@ -11,7 +11,7 @@ It will be partial coverage of [`@mixin` in SCSS](https://sass-lang.com/document
 - Dynamic styling
 - Take advantage of preprocessors
 - Variants that correspond to semantic hierarchies
-- Improve [Vaniila extract's recipes](https://vanilla-extract.style/documentation/packages/recipes/)
+- Improve [Vanilla Extract's recipes](https://vanilla-extract.style/documentation/packages/recipes/)
 - Make your BEM expressive
 
 ## Composition
@@ -81,7 +81,7 @@ const secondary = css([base, { background: "aqua" }]);
 It's clear that composition alone can't handle all dynamic cases.  
 What about dynamic cases?
 
-The solution is known as [`UI = f(state)`](https://docs.flutter.dev/data-and-backend/state-mgmt/declarative) and is It's simple.
+The solution is known as [`UI = f(state)`](https://docs.flutter.dev/data-and-backend/state-mgmt/declarative) and it's simple.
 
 If so, is there any reason for Style to not be a function?  
 This is the same as [fela's approach](https://fela.js.org/docs/latest/intro/principles).
@@ -185,7 +185,7 @@ It leaves the way out open, but we need to find a way to make it as declarative 
 
 [Variants](https://stitches.dev/docs/variants), made famous by [stitches](https://stitches.dev/), makes some control flows declarative.
 
-Vanilla extract, which this project is based on, is called [recipe](https://vanilla-extract.style/documentation/packages/recipes/).
+The Vanilla extract, which this project is based on, is called [recipe](https://vanilla-extract.style/documentation/packages/recipes/).
 
 ```typescript
 const avatar = recipe({
@@ -714,10 +714,10 @@ const button = rules({
 });
 ```
 
-First method is original method in stitches's compound variants, and it is still good way for it.  
+The first method is the original method in stitches's compound variants, and it is still a good way for it.  
 So we keep it.
 
-And second method we present will provide a more comfortable way to write the conditions.  
+And the second method we present will provide a more comfortable way to write the conditions.  
 This feature checks existing variants and provides automatic completion.
 
 **Compiled:**
@@ -745,50 +745,210 @@ button({
 
 ## 7. Default Variants
 
+The way of [Stitches's Default Variants](https://stitches.dev/docs/variants#default-variants) is already good to use, so we keep this method in ours.
+
 **Code:**
 
 ```typescript
+const button = rules({
+  // base styles
 
+  variants: {
+    color: {
+      brand: {
+        color: "#FFFFA0",
+        backgroundColor: "blueviolet"
+      },
+      accent: {
+        color: "#FFE4B5",
+        backgroundColor: "slateblue"
+      }
+    }
+  },
+  defaultVariants: {
+    color: "brand"
+  }
+});
 ```
 
 ## 8. Composition
 
 **Code:**
 
-```typescript
-const baseRule = rules({});
+[Vanilla Extract's Composition](https://vanilla-extract.style/documentation/style-composition/) is enough to use already. So we maintain this basically.  
+And It gonna inherit base rules like [Stitches's Composing Components](https://stitches.dev/docs/composing-components).
 
-const myRule = rules([baseRule, {}]);
+```typescript
+const baseRule = rules({
+  padding: "12px",
+
+  variants: {
+    color: {
+      brand: { color: "#FFFFA0" },
+      accent: { color: "#FFE4B5" }
+    },
+    size: {
+      small: { fontSize: "11px" },
+      large: { fontSize: "20px" }
+    }
+  }
+});
+
+const myRule = rules([
+  baseRule,
+
+  {
+    color: "blue",
+    marginTop: "10px",
+
+    toggles: {
+      rounded: { borderRadius: 999 }
+    }
+  }
+]);
 ```
 
 **Compiled:**
 
 ```css
+.[FILE_NAME]_baseRule__[HASH] {
+  padding: 12px;
+}
 
+.[FILE_NAME]_baseRule_color_brand__[HASH] {
+  color: "#FFFFA0";
+}
+.[FILE_NAME]_baseRule_color_accent__[HASH] {
+  color: "#FFE4B5";
+}
+.[FILE_NAME]_baseRule_size_small__[HASH] {
+  font-size: 11px;
+}
+.[FILE_NAME]_baseRule_size_large__[HASH] {
+  font-size: 20px;
+}
+
+.[FILE_NAME]_myRule__[HASH] {
+  color: "blue";
+  margin-top: "10px";
+}
+.[FILE_NAME]_myRule_toggle_rounded__[HASH] {
+  border-radius: 999;
+}
+```
+
+**Usage**
+
+```ts
+myRule(["rounded", { color: "brand", size: "small" }]);
 ```
 
 ## 9. rulesVarints
 
-Inspired by the [PandaCSS's `defineSlotRecipe()`](https://panda-css.com/docs/concepts/slot-recipes#config-slot-recipe).
+Inspired by the [PandaCSS's `defineSlotRecipe()`](https://panda-css.com/docs/concepts/slot-recipes#config-slot-recipe).  
+And at the same time, We refer to [Vanilla Extract's `styleVariants`](https://vanilla-extract.style/documentation/api/style-variants/) for code style for now. It could be change to [sub functions](https://github.com/mincho-js/mincho/issues/59).
 
 This is a combination of `rules()` and `cssVariants()`.
 
 **Code:**
 
 ```typescript
+const contents = rulesVariants({
+  text: {
+    fontWeight: "bold",
 
+    variants: {
+      color: {
+        main: { color: "#0078e5" },
+        sub: { color: "#fff7ed" }
+      },
+      size: {
+        large: { fontSize: "24px" },
+        medium: { fontSize: "18px" }
+        small: { fontSize: "12px" }
+      }
+    },
+
+    toggles: {
+      accent: { textDecoration: "underline" }
+    }
+  },
+  image: {
+    width: '100%',
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+
+    variants: {
+      style: {
+        thumbnail: {
+          width: "50px"
+        },
+        detail: {
+          width: '80%';
+          marginBottom: '10px';
+        }
+      }
+    }
+  }
+});
 ```
+
+It helps that we write multiple `rules` at once.
 
 **Compiled:**
 
 ```css
+.[FILE_NAME]_text__[HASH] {
+  font-weight: "bold";
+}
+.[FILE_NAME]_text_color_main__[HASH] {
+  color: "#0078e5";
+}
+.[FILE_NAME]_text_color_sub__[HASH] {
+  color: "#fff7ed";
+}
+.[FILE_NAME]_text_size_large__[HASH] {
+  font-size: "24px";
+}
+.[FILE_NAME]_text_size_medium__[HASH] {
+  font-size: "18px";
+}
+.[FILE_NAME]_text_size_small__[HASH] {
+  font-size: "12px";
+}
+.[FILE_NAME]_text_toggle_accent__[HASH] {
+  text-decoration: "underline";
+}
 
+.[FILE_NAME]_image__[HASH] {
+  width: "100%";
+  border: "1px solid #ccc";
+  border-radius: "5px";
+}
+.[FILE_NAME]_image_style_thumbnail__[HASH] {
+  width: "50px";
+}
+.[FILE_NAME]_image_style_detail__[HASH] {
+  width: "80%";
+  margin-bottom: "10px";
+}
 ```
 
 **Usage:**
 
 ```typescript
-
+// case 1
+contents.text([
+  "accent",
+  {
+    color: "sub",
+    size: "medium"
+  }
+]);
+// case 2
+contents.image({
+  style: "thumbnail"
+});
 ```
 
 ## 10. With `css()`
