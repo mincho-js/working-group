@@ -638,119 +638,109 @@ button([
 
 ## 6. Compound Variants
 
-[Stitche's `Compound Variants`](https://stitches.dev/docs/variants#compound-variants) is an effective way to set up additional css by leveraging the combination of variations you have already set up.
+[Stitches's `Compound Variants`](https://stitches.dev/docs/variants#compound-variants) is an effective way to set up additional css by leveraging the combination of variations you have already set up.
 
-However, the method of writing the conditions seems quite inconvenient.  
+However, the method of writing the conditions seems quite inconvenient when conditions are complicated.  
 So we want to improve the UX in this area.
 
-**Code:**
+**Code Before:**
 
 ```typescript
 const button = rules({
-  // base style
+  // base styles
 
   variants: {
     color: {
-      brand: {
-        color: "#FFFFA0"
-      },
-      accent: {
-        color: "#FFE4B5"
-      }
+      brand: { color: "#FFFFA0" },
+      accent: { color: "#FFE4B5" }
     },
     size: {
       small: { padding: 12 },
       medium: { padding: 16 },
       large: { padding: 24 }
-    },
-    border: {
-      basic: "1px solid #000"
     }
   },
-  // case 1
   compoundVariants: [
+    {
+      color: brand,
+      size: small,
+      style: {
+        fontSize: "16px"
+      }
+    }
+  ]
+});
+```
+
+It doesn't seem uncomfortable when the conditions are not as demanding as they are now.  
+But if the conditions become complicated, it will be inconvenient to fill out.
+
+**Code After**
+
+```typescript
+const button = rules({
+  // base styles
+
+  variants: {
+    color: {
+      brand: { color: "#FFFFA0" },
+      accent: { color: "#FFE4B5" }
+    },
+    size: {
+      small: { padding: 12 },
+      medium: { padding: 16 },
+      large: { padding: 24 }
+    }
+  },
+  // method 1
+  compoundVariants: [
+    {
+      color: brand,
+      size: small,
+      style: {
+        fontSize: "16px"
+      }
+    }
+  ],
+  // method 2
+  compoundVariants: ({ color, size }) => [
     {
       condition: [color.brand, size.small],
       style: {
         fontSize: "16px"
       }
-    },
-    {
-      condition: [color.accent, size.large],
-      style: {
-        fontSize: "24px",
-        fontWeight: "bold"
-      }
     }
-  ],
-  // case 2
-  compoundVariants: {
-    basic: {
-      variants: [color.brand, size.small],
-      style: {
-        fontSize: "16px"
-      }
-    },
-    title: {
-      variants: [color.accent, size.large],
-      style: {
-        fontSize: "24px",
-        fontWeight: "bold"
-      }
-    }
-  }
+  ]
 });
 ```
 
+First method is original method in stitches's compound variants, and it is still good way for it.  
+So we keep it.
+
+And second method we present will provide a more comfortable way to write the conditions.  
+This feature checks existing variants and provides automatic completion.
+
 **Compiled:**
 
-- `case1` use index in css compiled result.
-- `case2` use their key name in css compiled result.
-
 ```css
-// case 1
 .[FILE_NAME]_button_compound_0__[HASH] {
-  font-szie: '16px'
+  font-size: '16px'
 }
 .[FILE_NAME]_button_compound_1__[HASH] {
-  font-szie: '24px',
+  font-size: '24px',
   font-weight: bold
 }
-
-// case 2
-.[FILE_NAME]_button_compound_basic__[HASH] {
-  font-szie: '16px'
-}
-.[FILE_NAME]_button_compound_title__[HASH] {
-  font-szie: '24px',
-  font-weight: bold
-}
-
 ```
 
 **Usage:**
 
-- `case1`, if you use the already set combination, it will be applied automatically.
-  - when you type `accent` and `large`, it is applied `title` compound variants
-- `case2`, just typing compound variants key name
-  - in this example key name is `"title"`
+If you use the already set combination, it will be applied automatically.
 
 ```typescript
-// case 1
 button({
   color: "accent",
   size: "large"
 });
-
-// case 2
-button(
-  // compound variants
-  "title",
-  {
-    // basic variants
-    border: "basic"
-  }
-);
 ```
 
 ## 7. Default Variants
