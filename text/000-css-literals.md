@@ -521,6 +521,24 @@ Backward compatibility with [Vanilla Extract's `style()`](https://vanilla-extrac
 
 - `css()` is alised to `style()`
 - Should be support [`vars: `](https://vanilla-extract.style/documentation/styling#css-variables) and [`selectors: `](https://vanilla-extract.style/documentation/styling#complex-selectors) properties
+- `cssVariants()` is alised to [`styleVariants()`](https://vanilla-extract.style/documentation/api/style-variants/)
+
+```tsx
+// Definition
+const background = cssVariants({
+  primary: { background: "blue" },
+  secondary: { background: "aqua" }
+});
+
+// Usage
+interface SectionProps {
+  variant: keyof typeof background;
+}
+
+const Section = ({ variant }: SectionProps) => (
+  <section className={background[variant]}>...</section>
+);
+```
 
 # Reference-level explanation
 

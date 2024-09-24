@@ -374,12 +374,36 @@ function MyComponent() {
 }
 ```
 
+**Backward compatibility**
+
+The `base` field in [Vanilla Extract's recipes](https://vanilla-extract.style/documentation/packages/recipes/) should be supported.
+
+```typescript
+const myRule = rules({
+  base {
+    color: "blue",
+    backgroundColor: "red"
+  }
+});
+```
+
+When used together, the `base` field has higher priority.
+
+```typescript
+const myRule = rules({
+  color: "red",
+  base {
+    color: "blue" // set as "blue"
+  }
+});
+```
+
 ## 3. Props
 
 AST traversal is required for the implementation of functional rules when static extraction is required.
 
 ```typescript
-inteface MyRulesProps {
+interface MyRulesProps {
   color: string;
   background: string;
   size: number;
@@ -662,8 +686,10 @@ const button = rules({
   },
   compoundVariants: [
     {
-      color: brand,
-      size: small,
+      variants: {
+        color: brand,
+        size: small,
+      },
       style: {
         fontSize: "16px"
       }
@@ -695,8 +721,10 @@ const button = rules({
   // method 1
   compoundVariants: [
     {
-      color: brand,
-      size: small,
+      variants: {
+        color: brand,
+        size: small,
+      },
       style: {
         fontSize: "16px"
       }
@@ -1106,7 +1134,7 @@ If a feature is overly difficult to implement, you may want to implement another
 As drafted, functional `rules()` should be possible.
 
 ```typescript
-inteface MyRulesProps {
+interface MyRulesProps {
   color: string;
   background: string;
   size: number;
