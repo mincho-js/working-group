@@ -752,11 +752,11 @@ This feature checks existing variants and provides automatic completion.
 
 ```css
 .[FILE_NAME]_button_compound_0__[HASH] {
-  font-size: '16px'
+  font-size: 16px;
 }
 .[FILE_NAME]_button_compound_1__[HASH] {
-  font-size: '24px',
-  font-weight: bold
+  font-size: 24px;
+  font-weight: bold;
 }
 ```
 
@@ -844,10 +844,10 @@ const myRule = rules([
 }
 
 .[FILE_NAME]_baseRule_color_brand__[HASH] {
-  color: "#FFFFA0";
+  color: #FFFFA0;
 }
 .[FILE_NAME]_baseRule_color_accent__[HASH] {
-  color: "#FFE4B5";
+  color: #FFE4B5;
 }
 .[FILE_NAME]_baseRule_size_small__[HASH] {
   font-size: 11px;
@@ -857,11 +857,11 @@ const myRule = rules([
 }
 
 .[FILE_NAME]_myRule__[HASH] {
-  color: "blue";
-  margin-top: "10px";
+  color: blue;
+  margin-top: 10px;
 }
 .[FILE_NAME]_myRule_toggle_rounded__[HASH] {
-  border-radius: 999;
+  border-radius: 999px;
 }
 ```
 
@@ -927,38 +927,38 @@ It helps that we write multiple `rules` at once.
 
 ```css
 .[FILE_NAME]_text__[HASH] {
-  font-weight: "bold";
+  font-weight: bold;
 }
 .[FILE_NAME]_text_color_main__[HASH] {
-  color: "#0078e5";
+  color: #0078e5;
 }
 .[FILE_NAME]_text_color_sub__[HASH] {
-  color: "#fff7ed";
+  color: #fff7ed;
 }
 .[FILE_NAME]_text_size_large__[HASH] {
-  font-size: "24px";
+  font-size: 24px;
 }
 .[FILE_NAME]_text_size_medium__[HASH] {
-  font-size: "18px";
+  font-size: 18px;
 }
 .[FILE_NAME]_text_size_small__[HASH] {
-  font-size: "12px";
+  font-size: 12px;
 }
 .[FILE_NAME]_text_toggle_accent__[HASH] {
-  text-decoration: "underline";
+  text-decoration: underline;
 }
 
 .[FILE_NAME]_image__[HASH] {
-  width: "100%";
-  border: "1px solid #ccc";
-  border-radius: "5px";
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 .[FILE_NAME]_image_style_thumbnail__[HASH] {
-  width: "50px";
+  width: 50px;
 }
 .[FILE_NAME]_image_style_detail__[HASH] {
-  width: "80%";
-  margin-bottom: "10px";
+  width: 80%;
+  margin-bottom: 10px;
 }
 ```
 
