@@ -519,9 +519,9 @@ const secondary = css([base, { background: "aqua" }]);
 
 Backward compatibility with [Vanilla Extract's `style()`](https://vanilla-extract.style/documentation/api/style/) must be preserved.
 
-- `css()` is alised to `style()`
+- `css()` is aliased to `style()`
 - Should be support [`vars: `](https://vanilla-extract.style/documentation/styling#css-variables) and [`selectors: `](https://vanilla-extract.style/documentation/styling#complex-selectors) properties
-- `cssVariants()` is alised to [`styleVariants()`](https://vanilla-extract.style/documentation/api/style-variants/)
+- `cssVariants()` is aliased to [`styleVariants()`](https://vanilla-extract.style/documentation/api/style-variants/)
 
 ```tsx
 // Definition
@@ -612,17 +612,17 @@ Fortunately, the color picker extension([VS Code](https://marketplace.visualstud
 That it inherits all of Vanilla Extract's constraints.
 ```typescript
 const invalid = css({
-  // ❌ ERROR: Targetting `a[href]`
+  // ❌ ERROR: Targeting `a[href]`
   "& a[href]": {...},
 
-  // ❌ ERROR: Targetting `.otherClass`
+  // ❌ ERROR: Targeting `.otherClass`
   "& ~ div > .otherClass": {...}
 });
 
 // Also Invalid example:
 export const child = css({});
 export const parent = css({
-  // ❌ ERROR: Targetting `child` from `parent`
+  // ❌ ERROR: Targeting `child` from `parent`
   [`& ${child}`]: {...}
 });
 

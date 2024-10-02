@@ -581,7 +581,7 @@ I also don't think it's in any order that is significantly less readable.
 
 This decision can be overturned later based on benchmark results, ease of debugging, etc.
 
-### Exmaples
+### Examples
 
 You can now answer the question.
 
@@ -613,7 +613,7 @@ export const myCss = style({
 });
 ```
 
-It sounds complicated, but it's always transfiled with the following structure:
+It sounds complicated, but it's always transpiled with the following structure:
 
 **Convert to Vanilla Extract:**
 ```typescript

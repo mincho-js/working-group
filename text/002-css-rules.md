@@ -493,7 +493,7 @@ You can think of use cases as those that are statically extracted and those that
 ```typescript
 const myCSS = css([
   myRule({ color: "red", background: "blue", size: "5px" }),
-  { borderRadis: 999 }
+  { borderRadius: 999 }
 ]);
 ```
 
@@ -722,8 +722,8 @@ const button = rules({
   compoundVariants: [
     {
       variants: {
-        color: brand,
-        size: small,
+        color: "brand",
+        size: "small"
       },
       style: {
         fontSize: "16px"
@@ -871,7 +871,7 @@ const myRule = rules([
 myRule(["rounded", { color: "brand", size: "small" }]);
 ```
 
-## 9. rulesVarints
+## 9. rulesVariants
 
 Inspired by the [PandaCSS's `defineSlotRecipe()`](https://panda-css.com/docs/concepts/slot-recipes#config-slot-recipe).  
 And at the same time, We refer to [Vanilla Extract's `styleVariants`](https://vanilla-extract.style/documentation/api/style-variants/) for code style for now. It could be change to [sub functions](https://github.com/mincho-js/mincho/issues/59).
@@ -892,7 +892,7 @@ const contents = rulesVariants({
       },
       size: {
         large: { fontSize: "24px" },
-        medium: { fontSize: "18px" }
+        medium: { fontSize: "18px" },
         small: { fontSize: "12px" }
       }
     },
@@ -902,7 +902,7 @@ const contents = rulesVariants({
     }
   },
   image: {
-    width: '100%',
+    width: "100%",
     border: "1px solid #ccc",
     borderRadius: "5px",
 
@@ -912,8 +912,8 @@ const contents = rulesVariants({
           width: "50px"
         },
         detail: {
-          width: '80%';
-          marginBottom: '10px';
+          width: "80%",
+          marginBottom: "10px"
         }
       }
     }
@@ -998,7 +998,7 @@ const myCss = css([base, myRules]); // Same as [base, myRules()]
 
 # Reference-level explanation
 
-The default implementation starts with the [Vainilla Extracts's recipes package](https://vanilla-extract.style/documentation/packages/recipes/) [code](https://github.com/vanilla-extract-css/vanilla-extract/tree/master/packages/recipes).
+The default implementation starts with the [Vanilla Extracts's recipes package](https://vanilla-extract.style/documentation/packages/recipes/) [code](https://github.com/vanilla-extract-css/vanilla-extract/tree/master/packages/recipes).
 
 See also [Rainbow Sprinkles](https://github.com/wayfair/rainbow-sprinkles).
 
@@ -1047,7 +1047,7 @@ const Flex = rules((props) => ({
 }));
 ```
 
-## Programatically generated styles
+## Programmatically generated styles
 
 You might have styles that are generated at runtime.
 
