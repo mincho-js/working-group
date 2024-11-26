@@ -444,7 +444,7 @@ You may also need aliased.
 
 ```typescript
 const myRule = rules({
-  props: ["color", "background", { size: ["padding", "margin"] }]
+  props: ["color", "background", { size: { targets: ["padding", "margin"] }}]
 });
 ```
 
@@ -468,7 +468,7 @@ const myRule = rules({
   props: [
     "color",
     {
-      background: { base: "red" },
+      background: { base: "red", targets: ["background"] },
       size: { base: "3px", targets: ["padding", "margin"] }
     }
   ]
