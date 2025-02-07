@@ -492,7 +492,7 @@ You can think of use cases as those that are statically extracted and those that
 
 ```typescript
 const myCSS = css([
-  myRule({ color: "red", background: "blue", size: "5px" }),
+  myRule.props({ color: "red", background: "blue", size: "5px" }),
   { borderRadius: 999 }
 ]);
 ```
