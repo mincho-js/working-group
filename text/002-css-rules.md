@@ -687,8 +687,8 @@ const button = rules({
   compoundVariants: [
     {
       variants: {
-        color: brand,
-        size: small,
+        color: "brand",
+        size: "small",
       },
       style: {
         fontSize: "16px"
