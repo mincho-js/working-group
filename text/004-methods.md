@@ -120,16 +120,15 @@ const myCss = css.with<{ size: number, radius: number }>(({ size, radius = 0 }) 
 We can also provide type tools like stylex's [`StyleXStyles`](https://stylexjs.com/docs/learn/static-types/#constraining-accepted-styles).
 
 ```typescript
-type AllowProps = CSSRules<{
-  marginTop: 0 | 4 | 8 | 16; // Only allow this values
-}>;
+type RestrictedCSSRule = CSSRuleWith<{
+  // 1. Allowed Props ((required unless marked optional)
+  paddingTop: true; // All value allowed; required
+  marginTop: 0 | 4 | 8 | 16; // Only these values allowed; required
+  paddingBottom?: true; // All value allowed; optional
+  marginBottom?: 0 | 4 | 8 | 16; // Only these values allowed; optional
 
-type ForbiddenProps = CSSRulesWithout<{
-  // Forbidden properties
-  position: false;
-  display: false;
-  top: false;
-  start: false;
+  // 2. Forbidden Props
+  position: false; // Forbidden prop
 }>;
 ```
 
