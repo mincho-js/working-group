@@ -432,7 +432,7 @@ export const myCss = css({
     src: "local('Comic Sans MS')"
   },
   // Fontface with multiple
-  fontfamily$: [{ src: "local('Noto Sans')" }, { src: "local('Gentium')" }]
+  fontFamily$: [{ src: "local('Noto Sans')" }, { src: "local('Gentium')" }]
 });
 ```
 

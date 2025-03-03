@@ -400,7 +400,7 @@ export const myCss = cssVariant({
   primary: {
     color: "red",
     ":has(%secondary)": {
-      color: "blue",
+      color: "blue"
     }
   },
   secondary: {
@@ -416,10 +416,10 @@ export const myCss = cssVariant({
 ```typescript
 export const myCss = styleVariant({
   primary: {
-    color: "red",
+    color: "red"
   },
   secondary: {
-    color: "black",
+    color: "black"
   }
 });
 globalCSS(`${myCss["primary"]}:has(${myCss["secondary"]})`, {

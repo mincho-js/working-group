@@ -185,7 +185,7 @@ If `$value` is included, it is recognized as a Token.
 ```typescript
 const [themeClass, vars] = theme({
   myColor: {
-    $description: "My brand color"
+    $description: "My brand color",
     $type: "color",
     $value: "red"
   }

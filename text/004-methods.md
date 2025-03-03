@@ -91,7 +91,7 @@ It constrains the type of params.
 const myCss = css.with<{ color: true, background: "blue" | "grey" }>();
 myCss({
   color: "red", // Allow all properties
-  background: "blue" // Only some properties are allowed
+  background: "blue", // Only some properties are allowed
   border: "none" // Error!!
 });
 ```
@@ -217,7 +217,7 @@ const button = rules({
     {
       variants: {
         color: "brand",
-        size: "small",
+        size: "small"
       },
       style: {
         fontSize: "16px"
@@ -232,7 +232,7 @@ const button = rules({
     {
       condition: {
         color: "brand",
-        size: "small",
+        size: "small"
       },
       style: {
         fontSize: "16px"
@@ -256,10 +256,10 @@ const vars = createThemeContract({
 
 const themeA = createTheme(vars, {
   color: {
-    brand: 'blue'
+    brand: "blue"
   },
   font: {
-    body: 'arial'
+    body: "arial"
   }
 });
 
