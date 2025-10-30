@@ -174,7 +174,7 @@ console.log(vars);
  */
 ```
 
-### 3. Token
+## 3. Structural Token
 
 Inspired by [W3C Token Format](https://tr.designtokens.org/format/), each token can contain more specific information.
 
@@ -187,33 +187,11 @@ const [themeClass, vars] = theme({
   myColor: {
     $description: "My brand color",
     $type: "color",
-    $value: "red"
-  }
-});
-```
-
-**Compiled:**
-
-```css
-.[FILE_NAME]_themeClass__[HASH] {
-  --myColor__[HASH]: red;
-}
-```
-
-### 4.Conditional token
-
-If `$base` or `@at-rules` is included, it is recognized as a value.
-
-Not supported with top level.
-
-**Code:**
-
-```typescript
-const [themeClass, vars] = theme({
-  colors: {
-    "black-100": {
-      $base: "#000",
-      "@media (prefers-color-scheme: dark)": "#111"
+    $value: {
+      colorSpace: "srgb",
+      components: [1, 0, 1],
+      alpha: 1,
+      hex: "#ff00ff"
     }
   }
 });
@@ -223,41 +201,43 @@ const [themeClass, vars] = theme({
 
 ```css
 .[FILE_NAME]_themeClass__[HASH] {
-  --colors-black-100__[HASH]: #000;
-}
-
-@media (prefers-color-scheme: dark) {
-  .[FILE_NAME]_themeClass__[HASH] {
-    --colors-black-100__[HASH]: #111;
-  }
+  --myColor__[HASH]: #ff00ff;
 }
 ```
 
-### 5. Reference
+## 4. Reference
 
 Created as a CSS Variable, but can be referenced.
 
-It receives a theme object as the first argument, and an object containing `raw` and `fallback` functions as the second argument.
+You can easily reference CSS Variables using [`get`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get) and [`this`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this).
+
+Limitation: TypeScript's inference does not work as expected with [`ThisType`](https://www.typescriptlang.org/docs/handbook/utility-types.html#thistypetype), but instead infers it to `any`, so you must specify the return type. 
+- See: [TypeScript#47150](https://github.com/microsoft/TypeScript/issues/47150), [TypeScript#52969](https://github.com/microsoft/TypeScript/issues/52969)
 
 **Code:**
 
 ```typescript
 theme({
-  spaces: [0, 2, 4, 8, 16, 32, 64],
-  colors: {
-    "black-100": "#000",
-    "white-100": "#fff",
-    "blue-500": "#07c"
-  },
-
-  $refer: (theme) => ({
-    spaces: {
-      medium: spaces[4]
-    },
-    colors: {
-      primary: theme.colors["blue-500"]
+  spaces: {
+    base: [0, 2, 4, 8, 16, 32, 64],
+    semantic: {
+      get medium(): string {
+        return this.spaces.base[4]; // var(--spaces-base-4__[HASH])
+      }
     }
-  })
+  },
+  colors: {
+    base: {
+      "black-100": "#000",
+      "white-100": "#fff",
+      "blue-500": "#07c"
+    },
+    semantic: {
+      get primary(): string {
+        return this.colors.base["blue-500"]; // var(--colors-base-blue-500__[HASH])
+      } 
+    }
+  }
 });
 ```
 
@@ -265,48 +245,42 @@ theme({
 
 ```css
 .[FILE_NAME]_themeClass__[HASH] {
-  --spaces-0__[HASH]: 0;
-  --spaces-1__[HASH]: 2;
-  --spaces-2__[HASH]: 4;
-  --spaces-3__[HASH]: 8;
-  --spaces-4__[HASH]: 16;
-  --spaces-5__[HASH]: 32;
-  --spaces-6__[HASH]: 64;
-  --colors-black-100__[HASH]: #000;
-  --colors-white-100__[HASH]: #fff;
-  --colors-blue-500__[HASH]: #07c;
+  --spaces-base-0__[HASH]: 0;
+  --spaces-base-1__[HASH]: 2;
+  --spaces-base-2__[HASH]: 4;
+  --spaces-base-3__[HASH]: 8;
+  --spaces-base-4__[HASH]: 16;
+  --spaces-base-5__[HASH]: 32;
+  --spaces-base-6__[HASH]: 64;
+  --colors-base-black-100__[HASH]: #000;
+  --colors-base-white-100__[HASH]: #fff;
+  --colors-base-blue-500__[HASH]: #07c;
 
   /* New Style */
-  --spaces-medium__[HASH]: var(--spaces-4__[HASH]);
-  --colors-primary__[HASH]: var(--colors-blue-500__[HASH]);
+  --spaces-semantic-medium__[HASH]: var(--spaces-base-4__[HASH]);
+  --colors-semantic-primary__[HASH]: var(--colors-base-blue-500__[HASH]);
 }
 ```
 
-### 6. Aliased
+## 5. Composite Token
 
-Aliased only on Javascript objects.
-
-It receives a theme object as the first argument, and an object containing `raw` and `fallback` functions as the second argument.
+Inspired by [W3C composite token](https://tr.designtokens.org/format/#composite-types), but simplified.
 
 **Code:**
 
 ```typescript
 theme({
-  spaces: [0, 2, 4, 8, 16, 32, 64],
-  colors: {
-    "black-100": "#000",
-    "white-100": "#fff",
-    "blue-500": "#07c"
-  },
-
-  $alias: (theme) => ({
-    spaces: {
-      medium: spaces[4]
-    },
-    colors: {
-      primary: theme.colors["blue-500"]
+  shadow: {
+    light: {
+      get resolved(): string {
+        return `${this.shadow.light.color} ${this.shadow.light.offsetX} ${this.shadow.light.offsetY} ${this.shadow.light.blur}`;
+      },
+      color: "#00000080",
+      offsetX: { value: 0.5, unit: "rem" },
+      offsetY: { value: 0.5, unit: "rem" },
+      blur: { value: 1.5, unit: "rem" }
     }
-  })
+  }
 });
 ```
 
@@ -314,22 +288,86 @@ theme({
 
 ```css
 .[FILE_NAME]_themeClass__[HASH] {
-  --spaces-0__[HASH]: 0;
-  --spaces-1__[HASH]: 2;
-  --spaces-2__[HASH]: 4;
-  --spaces-3__[HASH]: 8;
-  --spaces-4__[HASH]: 16;
-  --spaces-5__[HASH]: 32;
-  --spaces-6__[HASH]: 64;
-  --colors-black-100__[HASH]: #000;
-  --colors-white-100__[HASH]: #fff;
-  --colors-blue-500__[HASH]: #07c;
+  --shadow-light__[HASH]: var(--shadow-light-color__[HASH]) var(--shadow-light-offsetX__[HASH]) var(--shadow-light-offsetY__[HASH]) var(--shadow-light-blur__[HASH]);
+  --shadow-light-color__[HASH]: #00000080;
+  --shadow-light-offsetX__[HASH]: "0.5rem";
+  --shadow-light-offsetY__[HASH]: "0.5rem";
+  --shadow-light-blur__[HASH]: "1.5rem";
+}
+```
+
+**Code:**
+
+```typescript
+theme({
+  shadow: {
+    light: theme.compositeValue({
+      get resolved(): string {
+        return `${this.color} ${this.offsetX} ${this.offsetY} ${this.blur}`;
+      },
+      color: "#00000080",
+      offsetX: { value: 0.5, unit: "rem" },
+      offsetY: { value: 0.5, unit: "rem" },
+      blur: { value: 1.5, unit: "rem" }
+    })
+  }
+});
+```
+
+
+## 6. Aliased
+
+Aliased only on Javascript objects.
+
+This only references another Variable without creating a CSS Variable.
+
+**Code:**
+
+```typescript
+theme({
+  spaces: {
+    base: [0, 2, 4, 8, 16, 32, 64],
+    semantic: {
+      get medium(): string {
+        return this.alias(this.spaces.base[4]); // var(--spaces-base-4__[HASH])
+      }
+    }
+  },
+  colors: {
+    base: {
+      "black-100": "#000",
+      "white-100": "#fff",
+      "blue-500": "#07c"
+    },
+    semantic: {
+      get primary(): string {
+        return this.alias(this.colors.base["blue-500"]); // var(--colors-base-blue-500__[HASH])
+      } 
+    }
+  }
+});
+```
+
+**Compiled:**
+
+```css
+.[FILE_NAME]_themeClass__[HASH] {
+  --spaces-base-0__[HASH]: 0;
+  --spaces-base-1__[HASH]: 2;
+  --spaces-base-2__[HASH]: 4;
+  --spaces-base-3__[HASH]: 8;
+  --spaces-base-4__[HASH]: 16;
+  --spaces-base-5__[HASH]: 32;
+  --spaces-base-6__[HASH]: 64;
+  --colors-base-black-100__[HASH]: #000;
+  --colors-base-white-100__[HASH]: #fff;
+  --colors-base-blue-500__[HASH]: #07c;
 
   /* New Style is None */
 }
 ```
 
-### 7. Raw
+## 7. Raw
 
 It returns the actual value, not a CSS Var.
 
@@ -337,21 +375,26 @@ It returns the actual value, not a CSS Var.
 
 ```typescript
 theme({
-  spaces: [0, 2, 4, 8, 16, 32, 64],
-  colors: {
-    "black-100": "#000",
-    "white-100": "#fff",
-    "blue-500": "#07c"
-  },
-
-  $refer: (theme, { raw }) => ({
-    spaces: {
-      medium: raw(spaces[4])
-    },
-    colors: {
-      primary: raw(theme.colors["blue-500"])
+  spaces: {
+    base: [0, 2, 4, 8, 16, 32, 64],
+    semantic: {
+      get medium(): number {
+        return this.raw(this.spaces.base[4]); // 16
+      }
     }
-  })
+  },
+  colors: {
+    base: {
+      "black-100": "#000",
+      "white-100": "#fff",
+      "blue-500": "#07c"
+    },
+    semantic: {
+      get primary(): string {
+        return this.raw(this.colors.base["blue-500"]); // #07c
+      } 
+    }
+  }
 });
 ```
 
@@ -359,44 +402,51 @@ theme({
 
 ```css
 .[FILE_NAME]_themeClass__[HASH] {
-  --spaces-0__[HASH]: 0;
-  --spaces-1__[HASH]: 2;
-  --spaces-2__[HASH]: 4;
-  --spaces-3__[HASH]: 8;
-  --spaces-4__[HASH]: 16;
-  --spaces-5__[HASH]: 32;
-  --spaces-6__[HASH]: 64;
-  --colors-black-100__[HASH]: #000;
-  --colors-white-100__[HASH]: #fff;
-  --colors-blue-500__[HASH]: #07c;
+  --spaces-base-0__[HASH]: 0;
+  --spaces-base-1__[HASH]: 2;
+  --spaces-base-2__[HASH]: 4;
+  --spaces-base-3__[HASH]: 8;
+  --spaces-base-4__[HASH]: 16;
+  --spaces-base-5__[HASH]: 32;
+  --spaces-base-6__[HASH]: 64;
+  --colors-base-black-100__[HASH]: #000;
+  --colors-base-white-100__[HASH]: #fff;
+  --colors-base-blue-500__[HASH]: #07c;
 
   /* New Style */
-  --spaces-medium__[HASH]: 16;
-  --colors-primary__[HASH]: #07c;
+  --spaces-semantic-medium__[HASH]: 16;
+  --colors-semantic-primary__[HASH]: #07c;
 }
 ```
 
-### 8. Fallback
+## 8. Fallback
 
 Fallback is easy to do.
 
+**Code:**
+
 ```typescript
 theme({
-  spaces: [0, 2, 4, 8, 16, 32, 64],
-  colors: {
-    "black-100": "#000",
-    "white-100": "#fff",
-    "blue-500": "#07c"
-  },
-
-  $refer: (theme, { fallback }) => ({
-    spaces: {
-      medium: fallback(spaces[4], 12)
-    },
-    colors: {
-      primary: fallback(theme.colors["blue-500"], "blue")
+  spaces: {
+    base: [0, 2, 4, 8, 16, 32, 64],
+    semantic: {
+      get medium(): string {
+        return this.fallbackVar(this.spaces.base[4], 12); // var(var(--spaces-base-4__[HASH]), 12)
+      }
     }
-  })
+  },
+  colors: {
+    base: {
+      "black-100": "#000",
+      "white-100": "#fff",
+      "blue-500": "#07c"
+    },
+    semantic: {
+      get primary(): string {
+        return this.fallbackVar(this.colors.base["blue-500"]); // var(var(--colors-base-blue-500__[HASH]), "blue")
+      } 
+    }
+  }
 });
 ```
 
@@ -404,25 +454,182 @@ theme({
 
 ```css
 .[FILE_NAME]_themeClass__[HASH] {
-  --spaces-0__[HASH]: 0;
-  --spaces-1__[HASH]: 2;
-  --spaces-2__[HASH]: 4;
-  --spaces-3__[HASH]: 8;
-  --spaces-4__[HASH]: 16;
-  --spaces-5__[HASH]: 32;
-  --spaces-6__[HASH]: 64;
-  --colors-black-100__[HASH]: #000;
-  --colors-white-100__[HASH]: #fff;
-  --colors-blue-500__[HASH]: #07c;
+  --spaces-base-0__[HASH]: 0;
+  --spaces-base-1__[HASH]: 2;
+  --spaces-base-2__[HASH]: 4;
+  --spaces-base-3__[HASH]: 8;
+  --spaces-base-4__[HASH]: 16;
+  --spaces-base-5__[HASH]: 32;
+  --spaces-base-6__[HASH]: 64;
+  --colors-base-black-100__[HASH]: #000;
+  --colors-base-white-100__[HASH]: #fff;
+  --colors-base-blue-500__[HASH]: #07c;
 
   /* New Style */
-  --spaces-medium__[HASH]: var(var(--spaces-4__[HASH]), 12);
-  --colors-primary__[HASH]: var(var(--colors-blue-500__[HASH]), blue);
+  --spaces-semantic-medium__[HASH]: var(var(--spaces-base-4__[HASH]), 12);
+  --colors-semantic-primary__[HASH]: var(var(--colors-base-blue-500__[HASH]), blue);
+}
+```
+
+## 9. Contract
+
+Create derived themes according to the contract.
+[Vanilla Extract's `createTheme()`](https://vanilla-extract.style/documentation/theming#code-splitting-themes) is already doing a good job, so keep it.
+
+**Code:**
+
+```typescript
+const [themeClass, vars] = theme({
+  colors: {
+    brand: "blue"
+  },
+  font: {
+    body: "arial"
+  }
+});
+
+const otherThemeClass = theme(vars, {
+  colors: {
+    brand: "red"
+  },
+  font: {
+    body: "helvetica"
+  }
+});
+```
+
+**Compiled:**
+
+```css
+.[FILE_NAME]_themeClass__[HASH] {
+  --colors-brand__[HASH]: blue;
+  --font-body__[HASH]: "arial";
+}
+
+.[FILE_NAME]_otherThemeClass__[HASH] {
+  --colors-brand__[HASH]: red;
+  --font-body__[HASH]: "helvetica";
+}
+```
+
+Can just set the contract and postpone CSS generation.
+
+```typescript
+const themeContract = themeContract({
+  colors: {
+    brand: ''
+  },
+  font: {
+    body: ''
+  }
+});
+
+const blueThemeClass = theme(vars, {
+  colors: {
+    brand: 'blue'
+  },
+  font: {
+    body: 'arial'
+  }
+});
+```
+
+**Compiled:**
+
+```css
+.[FILE_NAME]_blueThemeClass__[HASH] {
+  --colors-brand__[HASH]: blue;
+  --font-body__[HASH]: "arial";
+}
+```
+
+## 10. Global Theme
+
+Like other APIs, there is a Global API.
+
+**Code:**
+
+```typescript
+export const vars = globalTheme(':root', {
+  colors: {
+    brand: "blue"
+  },
+  font: {
+    body: "arial"
+  }
+});
+```
+
+**Compiled:**
+
+```css
+:root {
+  --colors-brand__[HASH]: blue;
+  --font-body__[HASH]: "arial";
 }
 ```
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
+
+## Getters and Methods
+
+You can use [getters](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get) and [this](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this) to dynamically calculate values ​​from properties, or use methods. \
+TypeScript's [ThisType](https://www.typescriptlang.org/docs/handbook/utility-types.html#thistypetype) allows you to control the type inferred from this.
+
+```typescript
+interface GreetingMixin {
+  greeting(name: string, age: number): string;
+}
+
+// `withGreeting()` injects the greeting method into the target object and returns the injected type.
+function withGreeting<TTarget extends object>(
+  target: TTarget & ThisType<TTarget & GreetingMixin>
+): TTarget & GreetingMixin {
+  const enhancedTarget = target as TTarget & GreetingMixin;
+  
+  enhancedTarget.greeting = function (name: string, age: number): string {
+    return `Hello, I'm ${name} and I'm ${age} years old!`;
+  };
+  
+  return enhancedTarget;
+}
+
+// Example usage
+const personWithGreeting = withGreeting({
+  name: "John",
+  age: 30,
+  otherInfo: {
+    hobby: "reading",
+    city: "New York"
+  },
+  get casualGreeting() {
+    console.log(this.otherInfo.city);
+    // Thanks to ThisType, this here is inferred to be TTarget & GreetingMixin
+    return this.greeting(this.name, this.age);
+  }
+});
+
+console.log(personWithGreeting.casualGreeting); // "Hello, I'm John and I'm 30 years old!"
+```
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+To keep the top-level as much as possible, I used special attributes starting with `$`.
+
+Since it is somewhat heterogeneous, I am concerned about whether it is the right direction.
+
+# Rationale and alternatives
+[rationale-and-alternatives]: #rationale-and-alternatives
+
+## Provider
+
+We could supply theme values ​​as Context like in [emotion](https://emotion.sh/docs/theming), but it is not an option because it is Near zero runtime.
+
+## Config
+
+Like [pandacss](https://panda-css.com/docs/theming/tokens), theme values ​​can be defined as Config, but it is oriented toward a general function.
 
 ## Hybrid merge
 
@@ -521,46 +728,40 @@ Proxy [
 
 I expect customization based on [fastify/deepmerge](https://github.com/fastify/deepmerge).
 
-# Drawbacks
-[drawbacks]: #drawbacks
-
-To keep the toplevel as much as possible, I used special attributes starting with `$`.
-
-Since it is somewhat heterogeneous, I am concerned about whether it is the right direction.
-
-# Rationale and alternatives
-[rationale-and-alternatives]: #rationale-and-alternatives
-
-## Provider
-
-We could supply theme values ​​as Context like in [emotion](https://emotion.sh/docs/theming), but it is not an option because it is Near zero runtime.
-
-## Config
-
-Like [pandacss](https://panda-css.com/docs/theming/tokens), theme values ​​can be defined as Config, but it is oriented toward a general function.
-
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-## Composite token
+## Conditional token
 
-There is a simple way to define [W3C composite token](https://tr.designtokens.org/format/#composite-types), but I can't think of a simple way to use it.
+If `$base` or `@at-rules` is included, it is recognized as a value.
 
-The definition only needs to allow composite tokens within `$value`.
+Not supported with top level.
+
+**Code:**
 
 ```typescript
-theme({
-  shadow-token: {
-    $type: "shadow",
-    $value: {
-      color: "#00000080",
-      offsetX: { value: 0.5, unit: "rem" },
-      offsetY: { value: 0.5, unit: "rem" },
-      blur: { value: 1.5, unit: "rem" },
-      spread: { value: 0, unit: "rem" }
+const [themeClass, vars] = theme({
+  colors: {
+    "black-100": {
+      $base: "#000",
+      "@media (prefers-color-scheme: dark)": "#111"
     }
   }
 });
+```
+
+**Compiled:**
+
+```css
+.[FILE_NAME]_themeClass__[HASH] {
+  --colors-black-100__[HASH]: #000;
+}
+
+@media (prefers-color-scheme: dark) {
+  .[FILE_NAME]_themeClass__[HASH] {
+    --colors-black-100__[HASH]: #111;
+  }
+}
 ```
 
 ## Constants
