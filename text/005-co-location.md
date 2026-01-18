@@ -60,60 +60,94 @@ adopts the authoring boundaries, not the runtime CSS engine.
 
 ## Build-time prior art
 
-Several projects demonstrate ways to retain co-location while constraining
-styles for static extraction.
+These projects keep styles close to components while generating some or all CSS
+during the build. They differ in how they evaluate styles and what work remains
+at runtime.
+
+| Project | Style evaluation | Output and runtime boundary |
+| --- | --- | --- |
+| Macaron | Extracted JavaScript executes through Vanilla Extract | CSS and JavaScript exports; components and class selection remain |
+| StyleX | AST evaluation of supported expressions | Atomic CSS; class composition and CSS variable values remain |
+| WyW-in-JS | AST evaluation with JavaScript execution as needed | Generated CSS, JavaScript, and runtime behavior are defined by each library |
+| Panda CSS | Static analysis of styling expressions | Generated CSS; helpers can still turn style objects into class names |
+| Kuma UI | AST evaluation of supported expressions | Static CSS where possible; dynamic style props can generate CSS at runtime |
+| Tamagui | AST evaluation and build-time style resolution | Extracted CSS and simpler components; runtime styling may remain |
 
 ### Macaron
 
-[Macaron](https://macaron.js.org/docs/working/) is the closest lowering prior
-art. It finds co-located style and styled-component calls, moves CSS-producing
-expressions into an extracted module, evaluates that module with Vanilla
-Extract, and leaves runtime code that selects pre-generated classes. It shows
-that `.css.ts` remains a build artifact without being a manual authoring
-boundary.
+[Macaron](https://macaron.js.org/docs/working/) keeps style and styled-component
+calls beside components, then moves CSS-producing code into generated
+`.css.ts` modules. Those modules execute during the build through Vanilla
+Extract, producing CSS and class names for the component runtime.
+
+Executing the extracted program allows styles to use ordinary JavaScript helpers
+and imported values, provided they work in the build environment. The trade-off
+is that retained module initialization also runs during extraction: an imported
+helper that reads `window` at the top level can fail before its style function
+is called.
 
 ### StyleX
 
-[StyleX](https://stylexjs.com/docs/learn/styling-ui/using-styles) uses typed
-object definitions, explicit composition, and compiler-generated atomic CSS.
-Its local and cross-module behavior also demonstrates that build-time CSS does
-not necessarily remove all runtime class selection. The relevant lesson is to
-define "zero runtime" as the absence of runtime CSS generation, not the absence
-of runtime JavaScript.
+[StyleX](https://stylexjs.com/) compiles object style definitions into atomic
+CSS. It evaluates supported expressions through an AST interpreter rather than
+executing the component module in a V8 context. Dynamic style values can flow
+through CSS custom properties, while class composition remains at runtime.
+
+The compiler avoids executing the component module, but must resolve imports
+separately from the bundler. For example, a barrel file that re-exports `create`
+may resolve normally in the bundler yet go unrecognized by the StyleX transform
+unless that import source is configured. Support for API wrappers also does not
+automatically extend to re-exported theme values.
 
 ### WyW-in-JS
 
-[WyW-in-JS](https://wyw-in-js.dev/how-it-works) provides a build-time processing
-substrate for co-located CSS-in-JS libraries. A processor identifies its own
-calls, evaluates the required JavaScript during the build, and emits
-processor-defined CSS and JavaScript artifacts. The relevant lesson is to make
-authoring-function discovery and the sidecar artifact contract extensible rather
-than coupling lowering to one API name.
+[WyW-in-JS](https://wyw-in-js.dev/how-it-works) provides shared build-time
+processing for CSS-in-JS libraries. Each library supplies processors that
+recognize its styling APIs and define the generated CSS and JavaScript. Its
+hybrid evaluation combines AST analysis with JavaScript execution for values
+that need it.
+
+Hybrid evaluation can handle expressions static analysis cannot resolve. For
+example, a value computed by an imported helper may require preparing and
+executing that helper's dependencies. The build must therefore resolve and run
+those imports; static-only mode avoids that fallback but rejects unresolved
+values.
 
 ### Panda CSS
 
-[Panda CSS](https://panda-css.com/docs/concepts/style-props) combines static
-extraction with recipes, patterns, and generated JSX style props. Its compiler
-must recognize the styling syntax statically, so convenience APIs remain within
-an analyzable contract. The relevant lesson is that prop-based ergonomics must
-fail clearly when the build cannot determine the resulting rule shape.
+[Panda CSS](https://panda-css.com/) combines static extraction with recipes,
+patterns, and JSX style props. It analyzes supported styling expressions and
+generates CSS during the build, while generated helpers can still turn style
+objects into class names at runtime.
+
+Panda can preserve static properties while leaving an unresolved value
+unextracted: `css({ color: "red", width: props.width })` can emit the color rule
+without a width rule. Runtime helpers may still produce a class name for the
+supplied width, but cannot supply missing CSS. Authors can use a fixed set of
+variants or explicit CSS variables instead.
 
 ### Kuma UI
 
-[Kuma UI](https://www.kuma-ui.com/docs/Concepts/Hybrid) combines familiar
-`styled`, style-prop, and `css` APIs with separate static and dynamic paths. It
-makes the trade-off visible: static values can be extracted, while truly dynamic
-rules require runtime work. Mincho takes the stricter boundary and permits
-runtime values only through pre-generated CSS custom properties.
+[Kuma UI](https://www.kuma-ui.com/) offers `styled`, `css`, and JSX style props
+with hybrid static and dynamic styling. It extracts styles it can determine at
+build time, while dynamic style props can use runtime CSS generation.
+
+The runtime fallback keeps dynamic style props usable. For example,
+`color={userColor}` can remain on the component, and a new style
+combination may trigger CSS generation and insertion at runtime. The fallback
+retains a styling engine, so runtime work depends on the values encountered.
 
 ### Tamagui
 
-[Tamagui](https://tamagui.dev/docs/intro/compiler-install) applies an optional
-compiler to co-located JSX and styled components. It partially evaluates style
-props, hoists static work, emits atomic CSS for web, and can flatten safe
-component boundaries while retaining runtime behavior when optimization does
-not apply. The relevant lesson is to keep authoring semantics valid without an
-optimization and treat compiler rewriting as a separate, provable layer.
+[Tamagui](https://tamagui.dev/docs/intro/compiler-install) uses an optimizing
+compiler for co-located JSX and styled components. It extracts known styles and
+can simplify component wrappers, while ordinary compiler mode retains runtime
+styling for cases it cannot extract.
+
+Keeping the component runtime as a fallback preserves behavior that cannot be
+reduced to plain DOM. For example, a component that provides styled context may
+need to stay intact even when some styles are static. The amount of runtime work
+removed therefore varies between components, and styling costs can remain.
 
 ## Mincho's direction
 
@@ -163,15 +197,15 @@ module. This follows Macaron's central design: authoring stays in `.tsx`, while
 the build creates the extracted style module that Vanilla Extract needs.
 
 ```tsx
-import { css } from '@mincho-js/css';
+import { css } from "@mincho-js/css";
 
 const panel = css({
-	padding: '20px',
-	backgroundColor: 'white',
+  padding: "20px",
+  backgroundColor: "white",
 });
 
 export function Panel() {
-	return <section className={panel}>Content</section>;
+  return <section className={panel}>Content</section>;
 }
 ```
 
@@ -196,11 +230,11 @@ configuration is part of this layer.
 
 ```typescript
 // vite.config.ts
-import { minchoVitePlugin } from '@mincho-js/vite';
-import { defineConfig } from 'vite';
+import { minchoVitePlugin } from "@mincho-js/vite";
+import { defineConfig } from "vite";
 
 export default defineConfig({
-	plugins: [minchoVitePlugin()],
+  plugins: [minchoVitePlugin()],
 });
 ```
 
@@ -209,10 +243,10 @@ Extract CSS processing.
 
 ```typescript
 // esbuild.config.ts
-import { minchoEsbuildPlugins } from '@mincho-js/esbuild';
+import { minchoEsbuildPlugins } from "@mincho-js/esbuild";
 
 export default {
-	plugins: minchoEsbuildPlugins(),
+  plugins: minchoEsbuildPlugins(),
 };
 ```
 
@@ -228,57 +262,57 @@ its package identity and member path are statically known.
 
 ```tsx
 import {
-	css,
-	defineRules,
-	rules,
-	theme,
-} from '@mincho-js/css';
+  css,
+  defineRules,
+  rules,
+  theme,
+} from "@mincho-js/css";
 import {
-	recipe,
-	styleVariants,
-} from '@mincho-js/css/compat';
+  recipe,
+  styleVariants,
+} from "@mincho-js/css/compat";
 
 const [themeClass, vars] = theme({
-	color: {
-		text: '#111',
-		accent: 'rebeccapurple',
-	},
+  color: {
+    text: "#111",
+    accent: "rebeccapurple",
+  },
 });
 
 const card = css({ color: vars.color.text });
 
 const tones = css.multiple({
-	neutral: { color: vars.color.text },
-	accent: { color: vars.color.accent },
+  neutral: { color: vars.color.text },
+  accent: { color: vars.color.accent },
 });
 
 const button = rules({
-	variants: {
-		tone: {
-			neutral: { color: vars.color.text },
-			accent: { color: vars.color.accent },
-		},
-	},
+  variants: {
+    tone: {
+      neutral: { color: vars.color.text },
+      accent: { color: vars.color.accent },
+    },
+  },
 });
 
 const { css: tokenCss } = defineRules({
-	properties: { color: [vars.color.text, vars.color.accent] },
+  properties: { color: [vars.color.text, vars.color.accent] },
 });
 
 const label = tokenCss({ color: vars.color.accent });
 
 const compatTones = styleVariants({
-	neutral: { color: vars.color.text },
-	accent: { color: vars.color.accent },
+  neutral: { color: vars.color.text },
+  accent: { color: vars.color.accent },
 });
 
 const compatButton = recipe({
-	variants: {
-		tone: {
-			neutral: { color: vars.color.text },
-			accent: { color: vars.color.accent },
-		},
-	},
+  variants: {
+    tone: {
+      neutral: { color: vars.color.text },
+      accent: { color: vars.color.accent },
+    },
+  },
 });
 ```
 
@@ -321,12 +355,12 @@ available.
 
 ```typescript
 // vite.config.ts
-import { minchoVitePlugin } from '@mincho-js/vite';
-import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { minchoVitePlugin } from "@mincho-js/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
-	plugins: [minchoVitePlugin(), react()],
+  plugins: [minchoVitePlugin(), react()],
 });
 ```
 
@@ -340,13 +374,13 @@ configuration error instead of creating styles at runtime. There is no runtime
 fallback.
 
 ```tsx
-import { styled } from '@mincho-js/react';
+import { styled } from "@mincho-js/react";
 
-const Button = styled('button', {
-	paddingBlock: '10px',
-	paddingInline: '20px',
-	borderRadius: '4px',
-	fontWeight: 'bold',
+const Button = styled("button", {
+  paddingBlock: "10px",
+  paddingInline: "20px",
+  borderRadius: "4px",
+  fontWeight: "bold",
 });
 
 <Button type="button">Save</Button>;
@@ -356,9 +390,9 @@ HTML and SVG tags also have property accessors.
 
 ```tsx
 const Button = styled.button({
-	paddingBlock: '10px',
-	paddingInline: '20px',
-	borderRadius: '4px',
+  paddingBlock: "10px",
+  paddingInline: "20px",
+  borderRadius: "4px",
 });
 ```
 
@@ -390,21 +424,21 @@ as component props and connects the selected classes to the target.
 
 ```tsx
 const Button = styled.button({
-	paddingBlock: '10px',
-	paddingInline: '20px',
-	variants: {
-		tone: {
-			primary: { backgroundColor: 'blue', color: 'white' },
-			danger: { backgroundColor: 'red', color: 'white' },
-		},
-	},
-	toggles: {
-		outlined: { border: '1px solid currentcolor' },
-	},
+  paddingBlock: "10px",
+  paddingInline: "20px",
+  variants: {
+    tone: {
+      primary: { backgroundColor: "blue", color: "white" },
+      danger: { backgroundColor: "red", color: "white" },
+    },
+  },
+  toggles: {
+    outlined: { border: "1px solid currentcolor" },
+  },
 });
 
 <Button type="button" tone="danger" outlined>
-	Delete
+  Delete
 </Button>;
 ```
 
@@ -433,27 +467,27 @@ component.
 
 ```tsx
 const Base = styled.div({
-	fontWeight: 'bold',
-	variants: {
-		tone: {
-			neutral: { color: 'gray' },
-			accent: { color: 'rebeccapurple' },
-		},
-	},
+  fontWeight: "bold",
+  variants: {
+    tone: {
+      neutral: { color: "gray" },
+      accent: { color: "rebeccapurple" },
+    },
+  },
 });
 
 const Card = styled(Base, {
-	padding: '20px',
-	backgroundColor: 'white',
-	variants: {
-		rounded: {
-			true: { borderRadius: '8px' },
-		},
-	},
+  padding: "20px",
+  backgroundColor: "white",
+  variants: {
+    rounded: {
+      true: { borderRadius: "8px" },
+    },
+  },
 });
 
 <Card tone="accent" rounded>
-	Content
+  Content
 </Card>;
 ```
 
@@ -467,13 +501,13 @@ The `as` prop changes the rendered element or component at runtime.
 
 ```tsx
 const Text = styled.span({
-	fontFamily: 'sans-serif',
-	variants: {
-		size: {
-			small: { fontSize: '12px' },
-			large: { fontSize: '18px' },
-		},
-	},
+  fontFamily: "sans-serif",
+  variants: {
+    size: {
+      small: { fontSize: "12px" },
+      large: { fontSize: "18px" },
+    },
+  },
 });
 
 <Text size="large">Span</Text>;
@@ -498,12 +532,12 @@ before React transforms JSX.
 
 ```typescript
 // vite.config.ts
-import { minchoVitePlugin } from '@mincho-js/vite';
-import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { minchoVitePlugin } from "@mincho-js/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
-	plugins: [minchoVitePlugin({ jsxCssProp: true }), react()],
+  plugins: [minchoVitePlugin({ jsxCssProp: true }), react()],
 });
 ```
 
@@ -515,10 +549,10 @@ type and missed-transform guard.
 
 ```json
 {
-	"compilerOptions": {
-		"jsx": "react-jsx",
-		"jsxImportSource": "@mincho-js/react"
-	}
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@mincho-js/react"
+  }
 }
 ```
 
@@ -528,26 +562,26 @@ runtime CSS generation.
 
 ```tsx
 function Notice() {
-	return (
-		<div css={{ padding: '20px', color: 'blue' }}>
-			Notice
-		</div>
-	);
+  return (
+    <div css={{ padding: "20px", color: "blue" }}>
+      Notice
+    </div>
+  );
 }
 ```
 
 Existing class names are preserved and appear before the generated CSS class.
 
 ```tsx
-<div className="layout" css={{ padding: '20px' }} />
+<div className="layout" css={{ padding: "20px" }} />
 ```
 
 An existing Mincho class can also be passed as a class value.
 
 ```tsx
-import { css } from '@mincho-js/css';
+import { css } from "@mincho-js/css";
 
-const panel = css({ padding: '20px' });
+const panel = css({ padding: "20px" });
 
 <div css={panel} />;
 ```
@@ -555,9 +589,9 @@ const panel = css({ padding: '20px' });
 Static CSS arrays remain CSS-rule composition.
 
 ```tsx
-const base = { display: 'flex' } as const;
+const base = { display: "flex" } as const;
 
-<div css={[base, { gap: '8px' }]} />;
+<div css={[base, { gap: "8px" }]} />;
 ```
 
 ### Dynamic declaration values
@@ -567,19 +601,19 @@ static.
 
 ```tsx
 interface MeterProps {
-	color: string;
-	gap: number;
+  color: string;
+  gap: number;
 }
 
 function Meter(props: MeterProps) {
-	return (
-		<div
-			css={{
-				color: props.color,
-				marginTop: `${props.gap}px`,
-			}}
-		/>
-	);
+  return (
+    <div
+      css={{
+        color: props.color,
+        marginTop: `${props.gap}px`,
+      }}
+    />
+  );
 }
 ```
 
@@ -596,23 +630,23 @@ A custom JSX target must forward both `className` and `style` to the element
 that receives the generated styles.
 
 ```tsx
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from "react";
 
 interface PanelProps {
-	className?: string;
-	style?: CSSProperties;
-	children?: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+  children?: ReactNode;
 }
 
 function Panel({ className, style, children }: PanelProps) {
-	return (
-		<section className={className} style={style}>
-			{children}
-		</section>
-	);
+  return (
+    <section className={className} style={style}>
+      {children}
+    </section>
+  );
 }
 
-<Panel css={{ color: 'blue' }}>Content</Panel>;
+<Panel css={{ color: "blue" }}>Content</Panel>;
 ```
 
 Forwarding `className` applies extracted classes. Forwarding `style` allows
@@ -672,15 +706,15 @@ For example, all of the following retain an authoring identity after imports are
 resolved:
 
 ```tsx
-import { css as makeCss, theme } from '@mincho-js/css';
-import * as mincho from '@mincho-js/css';
-import { recipe } from '@mincho-js/css/compat';
+import { css as makeCss, theme } from "@mincho-js/css";
+import * as mincho from "@mincho-js/css";
+import { recipe } from "@mincho-js/css/compat";
 
-const card = makeCss({ color: 'red' });
+const card = makeCss({ color: "red" });
 const variants = mincho.css.multiple({
-	primary: { color: 'blue' },
+  primary: { color: "blue" },
 });
-const button = recipe({ base: { color: 'red' } });
+const button = recipe({ base: { color: "red" } });
 ```
 
 The CSS package declares which root exports, subpath exports, and static member
@@ -716,18 +750,18 @@ normalizes component syntax into a target plus `rules(options)`.
 
 ```tsx
 // Author source
-const Button = styled('button', {
-	color: 'red',
+const Button = styled("button", {
+  color: "red",
 });
 ```
 
 The complete lowering is conceptually:
 
 ```text
-styled('button', options)
-  -> $$styled('button', rules(options))
+styled("button", options)
+  -> $$styled("button", rules(options))
   -> extract rules(options) into the generated sidecar
-  -> $$styled('button', importedRulesResult)
+  -> $$styled("button", importedRulesResult)
 ```
 
 `rules(options)` is therefore not a special CSS implementation inside React. It
@@ -738,7 +772,7 @@ target component.
 The property-accessor form only supplies the intrinsic target:
 
 ```tsx
-styled.button({ color: 'red' });
+styled.button({ color: "red" });
 // -> bind "button" to the extracted rules result
 ```
 
@@ -853,13 +887,13 @@ The following output is illustrative, not a naming guarantee:
 
 ```css
 .Button_base__hash {
-	padding-block: 10px;
-	padding-inline: 20px;
+  padding-block: 10px;
+  padding-inline: 20px;
 }
 
 .Button_tone_primary__hash {
-	background-color: blue;
-	color: white;
+  background-color: blue;
+  color: white;
 }
 ```
 
