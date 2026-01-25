@@ -565,20 +565,17 @@ This allows you to reuse complex condition combinations throughout your styles w
 
 Inspired by [tailwind-merge](https://github.com/dcastil/tailwind-merge).
 
-`defineRules()` ships with a `cx()` helper that understands the metadata produced by the ruleset. Instead of concatenating raw strings, it canonicalises every generated class into a `{ property, condition, slot }` identity and rewrites the list so that the last declaration for a given identity wins. Directional shorthands, compound conditions, and shortcut expansions are all mapped back to the same identity, so `px-8` and `paddingLeft-8` are treated as the same group.
+`defineRules()` returns a scoped `cx()` that uses metadata recorded for generated atomic classes.
 
-- **Conflict groups from rules.** The merge trie is generated from the declared `properties`, `rules`, and `shortcuts`, so any preset automatically inherits the correct override behavior.
-- **Condition awareness.** `_desktop:margin-8` only competes with other `_desktop` margin tokens, while `_mobile` or `hover` variants remain isolated.
-- **Zero-cost falsy filtering.** Arrays, objects, and boolean branches follow the same ergonomics as `clsx`, while still taking advantage of the property-aware merging.
-
-The merge pass follows the same $\mathcal{O}(n)$ algorithm as tailwind-merge and caches the canonical token lookups. We reuse their [performance tricks](https://github.com/dcastil/tailwind-merge/blob/v3.4.0/docs/features.md#performance) (prebuilt tries + memoised keys) and extend the schema so that custom presets can register new groups without rebuilding the whole trie at runtime.
+When two registered classes write the same property under the same normalized conditions, the last input wins.  
+Shortcuts are expanded before registration, so each resulting property can be overridden independently.
 
 ```typescript
 const { cx, css, rules } = defineRules({
   properties: {
-    margin: [0, 4, 8],
     paddingLeft: [8, 16],
     paddingRight: [8, 16],
+    backgroundColor: true,
     color: {
       primary: "#1d4ed8",
       inverse: "#f8fafc"
@@ -586,71 +583,122 @@ const { cx, css, rules } = defineRules({
   },
   shortcuts: {
     px: ["paddingLeft", "paddingRight"]
+  },
+  conditions: {
+    desktop: { "@media": "(min-width: 1024px)" }
   }
 });
 
 const button = rules({
-  intent: {
-    primary: css({ background: "#1d4ed8", color: "inverse" }),
-    ghost: css({ color: "primary" })
-  },
-  spacing: {
-    sm: "px-8",
-    lg: "px-16"
+  variants: {
+    intent: {
+      primary: { backgroundColor: "#1d4ed8", color: "inverse" },
+      ghost: { color: "primary" }
+    }
   }
 });
 
+const base = css({ px: 8 });
+const widerLeft = css({ paddingLeft: 16 });
+const desktopLeft = css({ _desktop: { paddingLeft: 16 } });
+
 const className = cx(
-  "margin-8",
-  button({ intent: "primary", spacing: "sm" }),
-  { "margin-0": true }
+  button({ intent: "primary" }),
+  base,
+  [widerLeft, false],
+  desktopLeft,
+  { external: true }
 );
 
-// => margin-0 wins over margin-8, and px-8 resolves to paddingLeft/paddingRight while deduping duplicates.
+// Keeps paddingLeft: 16 and paddingRight: 8 in the base condition,
+// the separate desktop declaration, the recipe classes, and the external class.
+
+cx(widerLeft, base); // Reversing the inputs keeps paddingLeft: 8.
 ```
 
-Because the merge config is derived from the ruleset, preset authors can serialise it alongside their precompiled CSS. Downstream packages can extend the conflict groups (icon utilities, animation helpers, etc.) while reusing the same cache, keeping class composition predictable across package boundaries.
+Inputs follow `clsx` conventions for arrays, conditional objects, and falsy values.
+
+Unknown classes are preserved, including their repetitions and relative order.  
+Writing a string such as `"paddingLeft-8"` does not register it.
+
+Grouped recipe classes without atomic metadata are also preserved as opaque tokens.
+
+Conditions match exactly after normalization of `layer`, `supports`, `media`, `container`, and `selector`.  
+The merge does not infer overlapping media queries, selector equivalence, or precedence between layers.
+
+It also treats CSS shorthands and longhands, such as `padding` and `paddingLeft`, as different properties, and does not give `!important` special priority.
+
+The root `cx` export joins inputs without this scoped conflict resolution.  
+Compiled scoped `cx()` calls use class-write metadata; they do not generate CSS at runtime.
 
 ## 10. Class Name Register
 
-Presets can be defined and CSS extraction can occur at the library level.
+Scoped `css()` records each emitted atomic class.  
+The `.preset` property captures an immutable snapshot of those declarations and inherited presets.
+
+Another `defineRules()` instance can consume it through `presets` to reuse classes for matching properties, values, and conditions, and to include their metadata in its scoped `cx()`.
+
+Generate shared styles before exporting the snapshot.  
+The consumer still declares its own property constraints, shortcuts, and condition names.
 
 ```typescript
-// Package A: @design-system/core
-export const presets = defineRules({
-  /* ... */
+// Package A: shared.css.ts, exporting sharedPreset through ./preset
+import { defineRules } from "@mincho-js/css";
+
+const shared = defineRules({
+  properties: { color: true }
 });
+
+const brandText = shared.css({ color: "#1d4ed8" });
+export const sharedPreset = shared.preset;
 ```
 
 ```typescript
-// Package B: @design-system/components
-import { presets } from "@design-system/core";
+// Package B: button.css.ts, exporting componentPreset through ./preset
+import { defineRules } from "@mincho-js/css";
+import { sharedPreset } from "@design-system/core/preset";
 
-export const componentStyle = presets.css({
-  /* ... */
+const component = defineRules({
+  properties: { color: true, paddingLeft: [8, 16] },
+  presets: sharedPreset
 });
-```
 
-```typescript
-// Application
-import { presets } from "@design-system/core";
-import { MyComponent } from "@design-system/components";
-import "@design-system/components/styles.css"; // Precompiled CSS
-
-const appStyle = presets.css({
-  /* ... */
+const buttonClass = component.css({
+  color: "#1d4ed8", // Reuses Package A's class and CSS.
+  paddingLeft: 8    // Emits a new class in Package B.
 });
+
+export const componentPreset = component.preset;
 ```
 
-To avoid creating duplicate class names and styles, you need to register class names with Vanilla Extract, and provide the store objects created so far to the preset object.
+Reading `.preset`, including through destructuring, captures the current state.  
+Later styles in the producer do not update an existing snapshot or consumer.
+
+To consume those additions, construct a new ruleset with the newer snapshot.  
+Combining different revisions of the same producer is rejected.
+
+Multiple presets can be supplied as an array.  
+Their ancestors are visited first, in parent order, and each shared ancestor is applied once.
+
+When independently generated classes represent the same declaration, the later visited producer supplies the class reused by subsequent authoring.  
+Existing classes remain valid and registered for scoped `cx()`.
+
+This preset order is separate from the input order used by `cx()` to resolve conflicting values.
+
+Registration with Vanilla Extract happens during CSS extraction.
+
+Published packages expose runtime exports through `.`, authoring snapshots through `./preset`, and precompiled CSS through `./style.css`.  
+Package authors configure these exports and preserve stylesheet imports with `sideEffects`.
 
 ```typescript
-import { presets } from "@design-system/core";
-import { MyComponent } from "@design-system/components";
-import "@design-system/components/styles.css"; // Precompiled CSS
-
-presets.registerClassNames();
+// Application entry
+import "@design-system/core/style.css";
+import "@design-system/components/style.css";
+import { Button } from "@design-system/components";
 ```
+
+Preset composition reuses known declarations in later builds; it does not remove CSS already emitted independently by other packages.  
+Load the stylesheets of every producer whose classes are used, and publish matching JavaScript, preset, and CSS outputs together.
 
 ## 11. Theme Specification
 
