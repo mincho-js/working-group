@@ -1,9 +1,15 @@
- Start Date: 2025-11-16
+- Start Date: 2025-11-16
 
 # Summary
 [summary]: #summary
 
-One paragraph explanation of the feature.
+`defineRules()` creates a typed styling API from property constraints, shortcuts, and named conditions.
+
+Its `css()` helper generates atomic CSS on demand at build time, while `rules()` defines reusable recipes and scoped `cx()` resolves conflicts between registered atomic classes.
+
+Presets share generated declarations across packages, and `propertyValues()` maps shared values to CSS properties.
+
+The browser loads the extracted CSS and selects or merges class names.
 
 # Motivation
 [motivation]: #motivation
@@ -54,7 +60,7 @@ const { cx, cva, css, rules } = defineRules({
     // Allow only values in objects
     color: { "indigo-800": "rgb(55, 48, 163)" },
 
-    //Entire properties
+    // Entire properties
     background: true,
     border: false
   }
@@ -93,13 +99,13 @@ const { css } = defineRules({
   properties: {
     background: {
       red: {
-        vars: { [alpha]: '1' },
+        vars: { [alpha]: "1" },
         background: `rgba(255, 0, 0, ${alpha})`
       }
     },
     backgroundOpacity: {
-      1: { vars: { [alpha]: '1' } },
-      0.1: { vars: { [alpha]: '0.1' } }
+      1: { vars: { [alpha]: "1" } },
+      0.1: { vars: { [alpha]: "0.1" } }
     }
   }
 });
@@ -111,14 +117,15 @@ css({
 });
 ```
 
+Both inputs write the same custom property. Its last value, `0.1`, wins, while the background declaration remains. Each becomes a separate atomic class.
+
 **Compiled:**
 
 ```css
 .background-red__[HASH] {
-  --alpha-[HASH]: 1;
   background: rgba(255, 0, 0, var(--alpha-[HASH]));
 }
-.backgroundOpacity-0\.1__[HASH] {
+.alpha__[HASH] {
   --alpha-[HASH]: 0.1;
 }
 ```
@@ -130,52 +137,48 @@ Inspired by [Uno CSS's Dynamic Rules](https://unocss.dev/config/rules#dynamic-ru
 The first level function can return a style object.
 
 ```typescript
-import { formatHex, parse, lighten, darken, saturate } from 'culori';
+import { colord } from "colord";
 
 const { css } = defineRules({
   properties: {
     background(color: string) {
-      const parsed = parse(color);
-      return { background: formatHex(parsed) }
+      return { background: colord(color).toHex() };
     },
     backgroundLight(color: string) {
-      const lightened = lighten(parse(color), 0.2);
-      return { background: formatHex(lightened) }
+      return { background: colord(color).lighten(0.2).toHex() };
     },
     backgroundDark(color: string) {
-      const darkened = darken(parse(color), 0.2);
-      return { background: formatHex(darkened) }
+      return { background: colord(color).darken(0.2).toHex() };
     },
     backgroundSaturate(color: string) {
-      const saturated = saturate(parse(color), 0.3);
-      return { background: formatHex(saturated) }
+      return { background: colord(color).saturate(0.3).toHex() };
     }
   }
 });
 
 // Usage
-css({
-  background: "blue",           // Normal blue
-  backgroundLight: "blue",      // Lightened blue
-  backgroundDark: "blue",       // Darkened blue
-  backgroundSaturate: "blue"    // More saturated blue
-});
+css({ background: "#6699cc" });         // Normal blue
+css({ backgroundLight: "#6699cc" });    // Lightened blue
+css({ backgroundDark: "#6699cc" });     // Darkened blue
+css({ backgroundSaturate: "#6699cc" }); // More saturated blue
 ```
+
+These calls use the same base color but compute different `background` values.
 
 **Compiled:**
 
 ```css
-.background-blue__[HASH] { background: #0000ff; }
-.backgroundLight-blue__[HASH] { background: #3333ff; }
-.backgroundDark-blue__[HASH] { background: #0000cc; }
-.backgroundSaturate-blue__[HASH] { background: #0000ff; }
+.background-\#6699cc__[HASH] { background: #6699cc; }
+.backgroundLight-\#6699cc__[HASH] { background: #b3cce6; }
+.backgroundDark-\#6699cc__[HASH] { background: #336699; }
+.backgroundSaturate-\#6699cc__[HASH] { background: #4799eb; }
 ```
 
 ## 5. Shortcuts
 
 Inspired by [Vanilla Extract's Shorthands](https://vanilla-extract.style/documentation/packages/sprinkles/#shorthands), [Uno CSS's Shortcuts](https://unocss.dev/config/shortcuts).
 
-Using shortcuts automatically derives properties, making Atomic CSS easy to achieve.  
+Using shortcuts automatically derives properties, making Atomic CSS easy to achieve.
 It provides dynamic rules like uno as well as fixed shortcuts, giving you an experience similar to writing tailwind.
 
 ```typescript
@@ -197,14 +200,17 @@ const { cx, css, rules } = defineRules({
 
     // Define with functional value
     align(value: string) {
-      const alignments = value.split('-');
-      const [justify, items] = alignments;
-      
+      const alignments = value.match(
+        /^(space-between|center|start|end)(?:-(center|start|end))?$/
+      );
+      if (!alignments) throw new Error(`Invalid alignment: ${value}`);
+      const [, justify, items] = alignments;
+
       return {
-        display: 'flex',
+        display: "flex",
         justifyContent: justify,
-        alignItems: items || justify
-      };
+        alignItems: items ?? (justify === "space-between" ? "center" : justify)
+      } as const;
     },
 
     // Define with fixed value
@@ -212,12 +218,14 @@ const { cx, css, rules } = defineRules({
   }
 });
 
-// Usage
-css(["inline", { px: 8 }]);         // { display: 'inline', paddingLeft: 8, paddingRight: 8 }
-css({ align: "center" });           // { display: 'flex', justifyContent: 'center', alignItems: 'center' }
-css({ align: "center-start" });     // { display: 'flex', justifyContent: 'center', alignItems: 'start' }
-css({ align: "space-between-center" }); // { display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
+// Usage (comments show expanded declarations)
+css(["inline", { px: 8 }]);         // { display: "inline", paddingLeft: 8, paddingRight: 8 }
+css({ align: "center" });           // { display: "flex", justifyContent: "center", alignItems: "center" }
+css({ align: "center-start" });     // { display: "flex", justifyContent: "center", alignItems: "start" }
+css({ align: "space-between-center" }); // { display: "flex", justifyContent: "space-between", alignItems: "center" }
 ```
+
+The functional shortcut parses Tailwind-like syntax such as `center-start` and `space-between-center` into CSS properties.
 
 **Compiled:**
 
@@ -228,6 +236,7 @@ css({ align: "space-between-center" }); // { display: 'flex', justifyContent: 's
 .display-flex__[HASH] { display: flex; }
 .justifyContent-center__[HASH] { justify-content: center; }
 .alignItems-center__[HASH] { align-items: center; }
+.alignItems-start__[HASH] { align-items: start; }
 .justifyContent-space\-between__[HASH] { justify-content: space-between; }
 ```
 
@@ -237,22 +246,22 @@ Inspired by [Vanilla Extract's Conditions](https://vanilla-extract.style/documen
 
 As with other conditionals, it starts with `_` and is used.  
 Both nested and property conditions can be used, as can general conditions.
+An empty condition object names the base style without adding a media query.
 
 ```typescript
 const { css } = defineRules({
   conditions: {
     mobile: {},
-    // **or**
-    // mobile: {},
     tablet: "@media screen and (min-width: 768px)",
     // **or**
     // tablet: { "@media": "screen and (min-width: 768px)" },
-    desktop: "@media screen and (min-width: 1024px)",
+    desktop: "@media screen and (min-width: 1024px)"
     // **or**
     // desktop: { "@media": "screen and (min-width: 1024px)" }
   },
-  defaultCondition: 'mobile'
-  // etc.
+  properties: {
+    fontSize: [12, 16, 20]
+  }
 });
 
 // Usage
@@ -265,9 +274,11 @@ css({
   },
   _desktop: {
     fontSize: 20
-  },
+  }
+});
 
-  // **or**
+// Equivalent property-level form; reuses the same atomic classes.
+css({
   fontSize: {
     _mobile: 12,
     _tablet: 16,
@@ -290,15 +301,17 @@ css({
 }
 ```
 
-You can also override Selector like [Panda CSS's Conditional Styles](https://panda-css.com/docs/concepts/conditional-styles).  
-`@layer`, `@container`, `@media`, `@supports` and selector should all be enabled.
+You can also define selector conditions like [Panda CSS's Conditional Styles](https://panda-css.com/docs/concepts/conditional-styles).
+
+Condition objects support `@layer`, `@container`, `@media`, `@supports`, and `selector`.  
+Use a distinct name when a built-in alias such as `_hover` already exists.
 
 ```typescript
 const { css } = defineRules({
   conditions: {
-    hover: { selector: "&:is(:hover, [data-hover])": {} },
-    focus: { selector: "&:is(:focus, [data-focus])": {} },
-    checked: { selector: "&:is(:checked, [data-checked], [aria-checked=true], [data-state='checked'])": {} }
+    interactiveHover: { selector: "&:is(:hover, [data-hover])" },
+    interactiveFocus: { selector: "&:is(:focus, [data-focus])" },
+    checked: { selector: "&:is(:checked, [data-checked], [aria-checked=true], [data-state='checked'])" }
   }
 });
 ```
@@ -331,6 +344,8 @@ const { css } = defineRules({
 Similar to [compound variants in rules](./002-css-rules.md#6-compound-variants), you can create new conditions by combining existing conditions.  
 This is useful when you need to define a condition that applies only when multiple conditions are met simultaneously.
 
+The proposed `compoundConditions` option adds its extra condition to declarations inside the matching combination. It does not copy declarations from parent conditions into that combination.
+
 For interaction design, mobile (coarse pointer) users often rely on tap/active and focus-visible states, whereas desktop (fine pointer) users expect hover and focus-within feedback. You can encode those differences declaratively.
 
 **Code:**
@@ -340,7 +355,7 @@ const { css } = defineRules({
   conditions: {
     mobile: { "@media": "(pointer: coarse)" },
     desktop: { "@media": "(pointer: fine)" },
-    hover: { selector: "&:hover" },
+    interactiveHover: { selector: "&:hover" },
     active: { selector: "&:active" },
     focusVisible: { selector: "&:focus-visible" },
     focusWithin: { selector: "&:focus-within" },
@@ -361,9 +376,9 @@ const { css } = defineRules({
       condition: { selector: "&:not([data-focus-visible=false])" }
     },
 
-    // Desktop hover states that should disappear when the user disables hover hints or prefers reduced motion
+    // Disable hover transitions for reduced motion unless hover hints are disabled
     {
-      when: ["desktop", "hover", "reducedMotion"],
+      when: ["desktop", "interactiveHover", "reducedMotion"],
       condition: { selector: "&:not([data-hover-disable])" }
     },
 
@@ -376,7 +391,7 @@ const { css } = defineRules({
     // Desktop focus-within rings tuned for high-contrast users
     {
       when: ["desktop", "focusWithin", "highContrast"],
-      condition: { "@supports": "(focus-visible: auto)" }
+      condition: { "@supports": "(box-shadow: 0 0 0 4px currentColor)" }
     }
   ]
 });
@@ -422,7 +437,7 @@ css({
     padding: 10,
 
     // Compound condition: desktop + hover + reducedMotion
-    _hover: {
+    _interactiveHover: {
       background: "#111827",
       color: "#f8fafc",
 
@@ -495,13 +510,10 @@ css({
 
 /* Compound: mobile + focus-visible + highContrast */
 @media (pointer: coarse) and (prefers-contrast: more) {
-  .outline-2px_solid_currentColor_mobile_focusVisible_highContrast__[HASH]:focus-visible:not([data-focus-visible=false]) {
-    outline: 2px solid currentColor;
-  }
-  .outlineWidth-3_mobile_focusVisible_highContrast__[HASH]:focus-visible {
+  .outlineWidth-3_mobile_focusVisible_highContrast__[HASH]:focus-visible:not([data-focus-visible=false]) {
     outline-width: 3px;
   }
-  .outlineStyle-double_mobile_focusVisible_highContrast__[HASH]:focus-visible {
+  .outlineStyle-double_mobile_focusVisible_highContrast__[HASH]:focus-visible:not([data-focus-visible=false]) {
     outline-style: double;
   }
 }
@@ -515,10 +527,10 @@ css({
   }
 
   /* Base hover/focus-within */
-  .background-\#111827_desktop_hover__[HASH]:hover {
+  .background-\#111827_desktop_interactiveHover__[HASH]:hover {
     background: #111827;
   }
-  .color-\#f8fafc_desktop_hover__[HASH]:hover {
+  .color-\#f8fafc_desktop_interactiveHover__[HASH]:hover {
     color: #f8fafc;
   }
   .boxShadow-focusRing_desktop_focusWithin__[HASH]:focus-within {
@@ -528,13 +540,7 @@ css({
 
 /* Compound: desktop + hover + reducedMotion */
 @media (pointer: fine) and (prefers-reduced-motion: reduce) {
-  .background-\#111827_desktop_hover_reducedMotion__[HASH]:hover:not([data-hover-disable]) {
-    background: #111827;
-  }
-  .color-\#f8fafc_desktop_hover_reducedMotion__[HASH]:hover:not([data-hover-disable]) {
-    color: #f8fafc;
-  }
-  .transition-none_desktop_hover_reducedMotion__[HASH]:hover {
+  .transition-none_desktop_interactiveHover_reducedMotion__[HASH]:hover:not([data-hover-disable]) {
     transition: none;
   }
 }
@@ -544,13 +550,13 @@ css({
   .outline-2px_solid_ButtonText_desktop_focusWithin_forced__[HASH]:focus-within:not([data-focus-ring=hidden]) {
     outline: 2px solid ButtonText;
   }
-  .boxShadow-none_desktop_focusWithin_forced__[HASH]:focus-within {
+  .boxShadow-none_desktop_focusWithin_forced__[HASH]:focus-within:not([data-focus-ring=hidden]) {
     box-shadow: none;
   }
 }
 
 /* Compound: desktop + focus-within + high contrast */
-@supports (focus-visible: auto) {
+@supports (box-shadow: 0 0 0 4px currentColor) {
   @media (pointer: fine) and (prefers-contrast: more) {
     .boxShadow-0_0_0_4px_desktop_focusWithin_highContrast__[HASH]:focus-within {
       box-shadow: 0 0 0 4px currentColor;
@@ -700,30 +706,46 @@ import { Button } from "@design-system/components";
 Preset composition reuses known declarations in later builds; it does not remove CSS already emitted independently by other packages.  
 Load the stylesheets of every producer whose classes are used, and publish matching JavaScript, preset, and CSS outputs together.
 
-## 11. Theme Specification
+## 11. Property Values
 
 Inspired by [Theme UI Specification](https://theme-ui.com/theme-spec).
 
-Design tokens only help when rules know which CSS properties they can satisfy. `defineRules.themeSpec()` takes the object returned from `theme()` and emits a property constraint map that slots neatly into `defineRules({ properties })`.
+`defineRules.propertyValues()` assigns one value source to several CSS properties.
+
+Each entry has a `source` and a list of target `properties`; the result can be passed to `defineRules({ properties })` or spread alongside other constraints.  
+It works with ordinary values as well as theme variables.
 
 **Code:**
 
 ```ts
+import { createVar, defineRules, theme } from "@mincho-js/css";
+
 const [themeClass, themeVars] = theme({
   colors: {
     text: { default: "#0f172a", muted: "#475569" },
     surface: { canvas: "#ffffff", brand: "#2563eb" }
   },
-  space: [0, 4, 8, 12, 16, 20]
+  space: ["0px", "4px", "8px", "12px", "16px", "20px"]
 });
 
 const customSpacingVariable = createVar();
 
-const tokens = defineRules.themeSpec([
-  // The values ​​of the sub-objects of the theme are registered.
-  { condition: [themeVars.colors], properties: ["color", "backgroundColor", "borderColor"] },
-  // Custom Variables are also possible.
-  { condition: [themeVars.space, customSpacingVariable], properties: ["gap", "paddingInlineStart", "paddingInlineEnd"] }
+const tokens = defineRules.propertyValues([
+  // The selected values of the theme are registered.
+  {
+    source: [
+      themeVars.colors.text.default,
+      themeVars.colors.text.muted,
+      themeVars.colors.surface.canvas,
+      themeVars.colors.surface.brand
+    ],
+    properties: ["color", "backgroundColor", "borderColor"]
+  },
+  // Custom variables are also possible.
+  {
+    source: [...themeVars.space, customSpacingVariable],
+    properties: ["gap", "paddingInlineStart", "paddingInlineEnd"]
+  }
 ]);
 
 const { css } = defineRules({
@@ -761,16 +783,41 @@ The `tokens` object shape:
 }
 ```
 
-For this to work, theme vars and createVar must be of type brand.
+An array source accepts the listed values directly, as in the example above.  
+An object source instead maps names to values:
+
+```typescript
+const { css: namedCss } = defineRules({
+  properties: defineRules.propertyValues([
+    {
+      source: { muted: themeVars.colors.text.muted },
+      properties: ["color", "backgroundColor"]
+    }
+  ])
+});
+
+namedCss({ color: "muted" });
+```
+
+The helper assigns each source as-is.  
+It does not recursively flatten a theme tree or infer target properties from token names.
+
+Select nested leaves explicitly, and use `[...themeVars.space, customSpacingVariable]` to combine array values.
+
+If several entries target the same property, the last source replaces the earlier source.
 
 ## 12. Theme context
 
-`defineRules()` can hydrate the theme bag returned from Vanilla Extract's `theme()` helper and thread it through every helper it creates. Once the `theme` option is provided, `css`, `rules`, `cva`, and even shortcut handlers can accept a function instead of a plain object. Each helper receives the strongly typed `themeVars` tree exactly once—`rules` and `cva` do this at the root of their configuration, so every nested branch can close over the same token vocabulary without re-invoking the callback.
+`defineRules()` can hydrate the theme bag returned from the `theme()` helper and thread it through every helper it creates.
+
+Once the `context` option is provided, `css`, `rules`, `cva`, and even shortcut handlers can accept a function instead of a plain object.
+
+Each helper receives the strongly typed `themeVars` tree exactly once—`rules` and `cva` do this at the root of their configuration, so every nested branch can close over the same token vocabulary without re-invoking the callback.
 
 **Code:**
 
 ```ts
-import { theme } from "@vanilla-extract/css";
+import { theme } from "@mincho-js/css";
 
 const [themeClass, themeVars] = theme({
   colors: {
@@ -782,7 +829,7 @@ const [themeClass, themeVars] = theme({
 });
 
 const { css, rules, cx } = defineRules({
-  theme: themeVars,
+  context: themeVars,
   conditions: {
     mobile: { "@media": "(max-width: 767px)" },
     desktop: { "@media": "(min-width: 768px)" }
@@ -834,7 +881,7 @@ const button = rules((theme) => ({
   }
 }));
 
-export const cardClass = cx(
+const cardClass = cx(
   themeClass,
   card,
   button(["pill", { intent: "primary", spacing: "relaxed" }])
@@ -843,7 +890,11 @@ export const cardClass = cx(
 
 ## 13. Shortcuts Spec
 
-Shortcuts can be packaged once and re-used across projects. `defineRules.shortcutPreset()` collects a dictionary of shortcut handlers, tags them with metadata, and exposes a typed object that can be spread into any ruleset. The helper is generic over the shape of `properties`; if you omit the generic, it defaults to `CSSProperties`, so the handlers always know which CSS props are safe to emit.
+Shortcuts can be packaged once and re-used across projects.
+
+`defineRules.shortcutSpec()` collects a dictionary of shortcut handlers, tags them with metadata, and exposes a typed object that can be spread into any ruleset.
+
+The helper is generic over the shape of `properties`; if you omit the generic, it defaults to `CSSProperties`, so the handlers always know which CSS props are safe to emit.
 
 **Code:**
 
@@ -860,11 +911,11 @@ const spacingShortcuts = defineRules.shortcutSpec<SpacingProps>({
   // Multi-alias -> expands recursively (px -> pl/pr)
   px: ["pl", "pr"],
 
-  // Functional shortcut -> can read the declared properties
+  // Functional shortcut -> computes several property values
   gutter(value: number | string) {
     const size = Number(value);
     return {
-      gap: properties.gap ?? size,
+      gap: size,
       paddingInlineStart: size,
       paddingInlineEnd: size
     } satisfies SpacingProps;
@@ -872,7 +923,7 @@ const spacingShortcuts = defineRules.shortcutSpec<SpacingProps>({
 });
 
 const motionShortcuts = defineRules.shortcutSpec({
-  transition(value: string) {
+  motion(value: string) {
     return { transition: value || "color 150ms ease" } satisfies CSSProperties;
   },
   focusRing(color: string) {
@@ -904,20 +955,55 @@ const pill = css([
   { px: 8 },
   { gutter: "12" },
   { focusRing: "#2563eb" },
-  { transition: "background 160ms ease" }
+  { motion: "background 160ms ease" }
 ]);
 ```
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This is the technical portion of the RFC. Explain the design in sufficient detail that:
+## Input resolution
 
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
+`defineRules()` stores property constraints, shortcuts, conditions, and optional authoring context.
 
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work.
+Arrays describe allowed property values; object maps translate input keys to values or style objects.  
+Functions can compute those values during authoring.
+
+`propertyValues()` only builds this constraint map; it emits no CSS.
+
+Style inputs are resolved in array order and object property order.  
+Shortcuts expand recursively, property resolvers produce CSS declarations, and named conditions add their media queries or selectors.
+
+Cyclic shortcuts and invalid or reserved condition names are errors.
+
+`css.raw()` returns the resolved style object; `css()` generates classes for its declarations.
+
+## Atomic output and merging
+
+A conflict is identified by the normalized condition tuple—layer, supports, media, container, and selector—and the expanded CSS property.  
+The last write to that pair survives within a call.
+
+Custom properties are separate declarations, so the background-opacity example keeps the background and only the final alpha value.
+
+CSS shorthand relationships and overlapping media queries are left to the browser.
+
+Reuse additionally includes the declaration's value: an equivalent declaration reuses an existing atomic class.  
+Earlier calls may already have emitted other CSS; a later override does not remove that stylesheet output.
+
+Scoped `cx()` uses the same conflict identity to merge registered classes.  
+Grouped recipe classes from `rules()` remain opaque to this atomic merge.
+
+## Build and runtime boundary
+
+Authoring runs in a `.css.ts` file or through the [co-location extraction flow](./005-co-location.md).  
+The build evaluates style callbacks and emits CSS, class names, and the metadata needed by scoped helpers.
+
+The browser loads that CSS and runs class selection or merging without evaluating the property resolvers again.
+
+Local authoring can use function-valued properties and shortcuts.  
+Exporting an authoring factory through extraction also requires serializable configuration and context; those function-valued definitions cannot cross that boundary.
+
+A `preset` snapshot contains generated atomic metadata, so consumers still declare their own property constraints and shortcuts.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -946,7 +1032,9 @@ const { css } = defineRules({
     tablet: "@media screen and (min-width: 768px)",
     desktop: "@media screen and (min-width: 1024px)"
   },
-  defaultCondition: "mobile"
+  properties: {
+    fontSize: [12, 16, 20]
+  }
 });
 
 css({
@@ -993,7 +1081,10 @@ const { css } = defineRules({
     tablet: "@media screen and (min-width: 768px)",
     desktop: "@media screen and (min-width: 1024px)"
   },
-  defaultCondition: "mobile",
+  properties: {
+    fontSize: [12, 16, 20]
+  },
+  // Proposed alternative to the atomic output above.
   stableClassNames: true
 });
 
