@@ -316,6 +316,41 @@ const { css } = defineRules({
 });
 ```
 
+### Default Condition
+
+`defaultCondition` selects the condition for declarations written without an explicit condition.  
+A print-specific ruleset can serve reports, invoices, and toolbars without repeating `_print` in every style.
+
+```typescript
+const printRules = defineRules({
+  conditions: {
+    print: { "@media": "print" }
+  },
+  defaultCondition: "print",
+  properties: {
+    color: true,
+    display: ["none", "block"]
+  }
+});
+
+const reportText = printRules.css({ color: "black" });
+const toolbar = printRules.css({ display: "none" });
+```
+
+**Compiled:**
+
+```css
+@media print {
+  .color-black_print__[HASH] { color: black; }
+  .display-none_print__[HASH] { display: none; }
+}
+```
+
+Both calls produce print-only declarations.  
+Explicitly named conditions keep their own target.
+
+The same pattern can provide a default scope for theme-specific styles or motion styles under `prefers-reduced-motion: no-preference`.
+
 ## 7. Composite Condition
 
 You can also create complex conditions.
@@ -344,54 +379,30 @@ const { css } = defineRules({
 Similar to [compound variants in rules](./002-css-rules.md#6-compound-variants), you can create new conditions by combining existing conditions.  
 This is useful when you need to define a condition that applies only when multiple conditions are met simultaneously.
 
-The proposed `compoundConditions` option adds its extra condition to declarations inside the matching combination. It does not copy declarations from parent conditions into that combination.
+`compoundConditions` adds its condition when the named conditions appear together in a style's condition path.
 
-For interaction design, mobile (coarse pointer) users often rely on tap/active and focus-visible states, whereas desktop (fine pointer) users expect hover and focus-within feedback. You can encode those differences declaratively.
+For example, buttons and menu items can share a policy that enables hover feedback only on enabled elements when the primary pointer supports hover and fine pointing.  
+Each component still chooses its own feedback styles.
 
 **Code:**
 
 ```typescript
-const { css } = defineRules({
+const interaction = defineRules({
+  properties: {
+    backgroundColor: true,
+    outline: true
+  },
   conditions: {
-    mobile: { "@media": "(pointer: coarse)" },
-    desktop: { "@media": "(pointer: fine)" },
+    enabled: { selector: "&:not(:disabled):not([aria-disabled=true])" },
     interactiveHover: { selector: "&:hover" },
-    active: { selector: "&:active" },
-    focusVisible: { selector: "&:focus-visible" },
-    focusWithin: { selector: "&:focus-within" },
-    reducedMotion: { "@media": "(prefers-reduced-motion: reduce)" },
-    highContrast: { "@media": "(prefers-contrast: more)" },
-    forcedColors: { "@media": "(forced-colors: active)" }
+    focusVisible: { selector: "&:focus-visible" }
   },
   compoundConditions: [
-    // Mobile press feedback, but only when the active state and reduced motion preference are both present
     {
-      when: ["mobile", "active", "reducedMotion"],
-      condition: { "@supports": "(touch-action: manipulation)" }
-    },
-
-    // Mobile focus-visible rings that respect high-contrast users
-    {
-      when: ["mobile", "focusVisible", "highContrast"],
-      condition: { selector: "&:not([data-focus-visible=false])" }
-    },
-
-    // Disable hover transitions for reduced motion unless hover hints are disabled
-    {
-      when: ["desktop", "interactiveHover", "reducedMotion"],
-      condition: { selector: "&:not([data-hover-disable])" }
-    },
-
-    // Desktop focus-within outlines inside forced colors mode
-    {
-      when: ["desktop", "focusWithin", "forcedColors"],
-      condition: { selector: "&:not([data-focus-ring=hidden])" }
-    },
-
-    // Desktop focus-within rings tuned for high-contrast users
-    {
-      when: ["desktop", "focusWithin", "highContrast"],
-      condition: { "@supports": "(box-shadow: 0 0 0 4px currentColor)" }
+      when: ["enabled", "interactiveHover"],
+      condition: {
+        "@media": "(hover: hover) and (pointer: fine)"
+      }
     }
   ]
 });
@@ -400,64 +411,21 @@ const { css } = defineRules({
 **Usage:**
 
 ```typescript
-css({
-  fontSize: 14,
-  color: "#1f2329",
-  transition: "color 120ms ease, background 120ms ease",
-
-  // Mobile prioritises tap + focus-visible feedback
-  _mobile: {
-    fontSize: 15,
-    padding: 12,
-
-    // Compound condition: mobile + active + reducedMotion
-    _active: {
-      _reducedMotion: {
-        background: "#0f172a",
-        color: "#f8fafc",
-        transition: "none"
-      }
-    },
-
-    // Compound condition: mobile + focus-visible + highContrast
+const button = interaction.css({
+  _enabled: {
     _focusVisible: {
-      outline: "2px solid currentColor",
-      outlineOffset: 4,
-
-      _highContrast: {
-        outlineWidth: 3,
-        outlineStyle: "double"
-      }
-    }
-  },
-
-  // Desktop can leverage hover + focus-within
-  _desktop: {
-    fontSize: 16,
-    padding: 10,
-
-    // Compound condition: desktop + hover + reducedMotion
-    _interactiveHover: {
-      background: "#111827",
-      color: "#f8fafc",
-
-      _reducedMotion: {
-        transition: "none"
-      }
+      outline: "2px solid #2563eb"
     },
+    _interactiveHover: {
+      backgroundColor: "#1d4ed8"
+    }
+  }
+});
 
-    // Compound condition: desktop + focus-within + forced/high contrast
-    _focusWithin: {
-      boxShadow: "0 0 0 3px rgba(59,130,246,0.5)",
-
-      _forcedColors: {
-        outline: "2px solid ButtonText",
-        boxShadow: "none"
-      },
-
-      _highContrast: {
-        boxShadow: "0 0 0 4px currentColor"
-      }
+const menuItem = interaction.css({
+  _enabled: {
+    _interactiveHover: {
+      backgroundColor: "#e2e8f0"
     }
   }
 });
@@ -466,106 +434,27 @@ css({
 **Compiled:**
 
 ```css
-.fontSize-14__[HASH] {
-  font-size: 14px;
-}
-.color-\#1f2329__[HASH] {
-  color: #1f2329;
-}
-.transition-color_120ms\ ease\,\ background_120ms\ ease__[HASH] {
-  transition: color 120ms ease, background 120ms ease;
+.buttonFocus__[HASH]:not(:disabled):not([aria-disabled=true]):focus-visible {
+  outline: 2px solid #2563eb;
 }
 
-@media (pointer: coarse) {
-  .fontSize-15_mobile__[HASH] {
-    font-size: 15px;
+@media (hover: hover) and (pointer: fine) {
+  .buttonHover__[HASH]:not(:disabled):not([aria-disabled=true]):hover {
+    background-color: #1d4ed8;
   }
-  .padding-12_mobile__[HASH] {
-    padding: 12px;
-  }
-
-  /* Base mobile focus-visible */
-  .outline-2px_solid_currentColor_mobile_focusVisible__[HASH]:focus-visible {
-    outline: 2px solid currentColor;
-  }
-  .outlineOffset-4_mobile_focusVisible__[HASH]:focus-visible {
-    outline-offset: 4px;
-  }
-}
-
-/* Compound: mobile + active + reducedMotion */
-@supports (touch-action: manipulation) {
-  @media (pointer: coarse) and (prefers-reduced-motion: reduce) {
-    .background-\#0f172a_mobile_active_reducedMotion__[HASH]:active {
-      background: #0f172a;
-    }
-    .color-\#f8fafc_mobile_active_reducedMotion__[HASH]:active {
-      color: #f8fafc;
-    }
-    .transition-none_mobile_active_reducedMotion__[HASH]:active {
-      transition: none;
-    }
-  }
-}
-
-/* Compound: mobile + focus-visible + highContrast */
-@media (pointer: coarse) and (prefers-contrast: more) {
-  .outlineWidth-3_mobile_focusVisible_highContrast__[HASH]:focus-visible:not([data-focus-visible=false]) {
-    outline-width: 3px;
-  }
-  .outlineStyle-double_mobile_focusVisible_highContrast__[HASH]:focus-visible:not([data-focus-visible=false]) {
-    outline-style: double;
-  }
-}
-
-@media (pointer: fine) {
-  .fontSize-16_desktop__[HASH] {
-    font-size: 16px;
-  }
-  .padding-10_desktop__[HASH] {
-    padding: 10px;
-  }
-
-  /* Base hover/focus-within */
-  .background-\#111827_desktop_interactiveHover__[HASH]:hover {
-    background: #111827;
-  }
-  .color-\#f8fafc_desktop_interactiveHover__[HASH]:hover {
-    color: #f8fafc;
-  }
-  .boxShadow-focusRing_desktop_focusWithin__[HASH]:focus-within {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
-  }
-}
-
-/* Compound: desktop + hover + reducedMotion */
-@media (pointer: fine) and (prefers-reduced-motion: reduce) {
-  .transition-none_desktop_interactiveHover_reducedMotion__[HASH]:hover:not([data-hover-disable]) {
-    transition: none;
-  }
-}
-
-/* Compound: desktop + focus-within + forced colors */
-@media (pointer: fine) and (forced-colors: active) {
-  .outline-2px_solid_ButtonText_desktop_focusWithin_forced__[HASH]:focus-within:not([data-focus-ring=hidden]) {
-    outline: 2px solid ButtonText;
-  }
-  .boxShadow-none_desktop_focusWithin_forced__[HASH]:focus-within:not([data-focus-ring=hidden]) {
-    box-shadow: none;
-  }
-}
-
-/* Compound: desktop + focus-within + high contrast */
-@supports (box-shadow: 0 0 0 4px currentColor) {
-  @media (pointer: fine) and (prefers-contrast: more) {
-    .boxShadow-0_0_0_4px_desktop_focusWithin_highContrast__[HASH]:focus-within {
-      box-shadow: 0 0 0 4px currentColor;
-    }
+  .menuItemHover__[HASH]:not(:disabled):not([aria-disabled=true]):hover {
+    background-color: #e2e8f0;
   }
 }
 ```
 
-This allows you to reuse complex condition combinations throughout your styles without repeating the logic, and extend them with additional conditions as needed.
+The extra media query applies to declarations under both `enabled` and `interactiveHover`.  
+The focus branch uses a different combination, so its outline remains available across pointer types.
+
+Declarations in parent conditions stay under their original conditions.
+
+A shared ruleset can update this hover policy for every matching style without editing each component.  
+Nested or composite conditions remain sufficient for combinations that do not need an automatically applied policy.
 
 ## 9. Class Name Merge
 
