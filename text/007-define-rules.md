@@ -7,7 +7,8 @@
 
 Its `css()` helper generates atomic CSS on demand at build time, while `rules()` defines reusable recipes and scoped `cx()` resolves conflicts between registered atomic classes.
 
-Presets share generated declarations across packages, and `propertyValues()` maps shared values to CSS properties.
+Presets share generated declarations across packages.  
+The `properties()`, `shortcuts()`, and `conditions()` helpers build reusable definitions for the matching options.
 
 The browser loads the extracted CSS and selects or merges class names.
 
@@ -595,107 +596,7 @@ import { Button } from "@design-system/components";
 Preset composition reuses known declarations in later builds; it does not remove CSS already emitted independently by other packages.  
 Load the stylesheets of every producer whose classes are used, and publish matching JavaScript, preset, and CSS outputs together.
 
-## 11. Property Values
-
-Inspired by [Theme UI Specification](https://theme-ui.com/theme-spec).
-
-`defineRules.propertyValues()` assigns one value source to several CSS properties.
-
-Each entry has a `source` and a list of target `properties`; the result can be passed to `defineRules({ properties })` or spread alongside other constraints.  
-It works with ordinary values as well as theme variables.
-
-**Code:**
-
-```ts
-import { createVar, defineRules, theme } from "@mincho-js/css";
-
-const [themeClass, themeVars] = theme({
-  colors: {
-    text: { default: "#0f172a", muted: "#475569" },
-    surface: { canvas: "#ffffff", brand: "#2563eb" }
-  },
-  space: ["0px", "4px", "8px", "12px", "16px", "20px"]
-});
-
-const customSpacingVariable = createVar();
-
-const tokens = defineRules.propertyValues([
-  // The selected values of the theme are registered.
-  {
-    source: [
-      themeVars.colors.text.default,
-      themeVars.colors.text.muted,
-      themeVars.colors.surface.canvas,
-      themeVars.colors.surface.brand
-    ],
-    properties: ["color", "backgroundColor", "borderColor"]
-  },
-  // Custom variables are also possible.
-  {
-    source: [...themeVars.space, customSpacingVariable],
-    properties: ["gap", "paddingInlineStart", "paddingInlineEnd"]
-  }
-]);
-
-const { css } = defineRules({
-  conditions: {
-    mobile: { "@media": "(max-width: 768px)" },
-    desktop: { "@media": "(min-width: 769px)" }
-  },
-  properties: {
-    display: ["inline-flex", "flex"],
-    ...tokens
-  }
-});
-
-const button = css({
-  color: themeVars.colors.text.muted,
-  backgroundColor: themeVars.colors.surface.brand,
-  gap: themeVars.space[1],
-  _mobile: {
-    paddingInlineStart: themeVars.space[3],
-    paddingInlineEnd: themeVars.space[2]
-  }
-});
-```
-
-The `tokens` object shape:
-
-```typescript
-{
-  color: [themeVars.colors.text.default, themeVars.colors.text.muted, themeVars.colors.surface.canvas, themeVars.colors.surface.brand],
-  backgroundColor: [themeVars.colors.text.default, themeVars.colors.text.muted, themeVars.colors.surface.canvas, themeVars.colors.surface.brand],
-  borderColor: [themeVars.colors.text.default, themeVars.colors.text.muted, themeVars.colors.surface.canvas, themeVars.colors.surface.brand],
-  gap: [themeVars.space[0], themeVars.space[1], themeVars.space[2], themeVars.space[3], themeVars.space[4], themeVars.space[5], customSpacingVariable],
-  paddingInlineStart: [themeVars.space[0], themeVars.space[1], themeVars.space[2], themeVars.space[3], themeVars.space[4], themeVars.space[5], customSpacingVariable],
-  paddingInlineEnd: [themeVars.space[0], themeVars.space[1], themeVars.space[2], themeVars.space[3], themeVars.space[4], themeVars.space[5], customSpacingVariable]
-}
-```
-
-An array source accepts the listed values directly, as in the example above.  
-An object source instead maps names to values:
-
-```typescript
-const { css: namedCss } = defineRules({
-  properties: defineRules.propertyValues([
-    {
-      source: { muted: themeVars.colors.text.muted },
-      properties: ["color", "backgroundColor"]
-    }
-  ])
-});
-
-namedCss({ color: "muted" });
-```
-
-The helper assigns each source as-is.  
-It does not recursively flatten a theme tree or infer target properties from token names.
-
-Select nested leaves explicitly, and use `[...themeVars.space, customSpacingVariable]` to combine array values.
-
-If several entries target the same property, the last source replaces the earlier source.
-
-## 12. Theme context
+## 11. Theme context
 
 `defineRules()` can hydrate the theme bag returned from the `theme()` helper and thread it through every helper it creates.
 
@@ -777,11 +678,111 @@ const cardClass = cx(
 );
 ```
 
-## 13. Shortcuts Spec
+## 12. Reusable properties
+
+Inspired by [Theme UI Specification](https://theme-ui.com/theme-spec).
+
+`defineRules.properties()` assigns shared values to several CSS properties.
+
+Each entry pairs target `properties` with their allowed `values`; the result can be passed to `defineRules({ properties })` or spread alongside other constraints.  
+It works with ordinary values as well as theme variables.
+
+**Code:**
+
+```ts
+import { createVar, defineRules, theme } from "@mincho-js/css";
+
+const [themeClass, themeVars] = theme({
+  colors: {
+    text: { default: "#0f172a", muted: "#475569" },
+    surface: { canvas: "#ffffff", brand: "#2563eb" }
+  },
+  space: ["0px", "4px", "8px", "12px", "16px", "20px"]
+});
+
+const customSpacingVariable = createVar();
+
+const properties = defineRules.properties([
+  // The selected values of the theme are registered.
+  {
+    properties: ["color", "backgroundColor", "borderColor"],
+    values: [
+      themeVars.colors.text.default,
+      themeVars.colors.text.muted,
+      themeVars.colors.surface.canvas,
+      themeVars.colors.surface.brand
+    ]
+  },
+  // Custom variables are also possible.
+  {
+    properties: ["gap", "paddingInlineStart", "paddingInlineEnd"],
+    values: [...themeVars.space, customSpacingVariable]
+  }
+]);
+
+const { css } = defineRules({
+  conditions: {
+    mobile: { "@media": "(max-width: 768px)" },
+    desktop: { "@media": "(min-width: 769px)" }
+  },
+  properties: {
+    display: ["inline-flex", "flex"],
+    ...properties
+  }
+});
+
+const button = css({
+  color: themeVars.colors.text.muted,
+  backgroundColor: themeVars.colors.surface.brand,
+  gap: themeVars.space[1],
+  _mobile: {
+    paddingInlineStart: themeVars.space[3],
+    paddingInlineEnd: themeVars.space[2]
+  }
+});
+```
+
+The `properties` object shape:
+
+```typescript
+{
+  color: [themeVars.colors.text.default, themeVars.colors.text.muted, themeVars.colors.surface.canvas, themeVars.colors.surface.brand],
+  backgroundColor: [themeVars.colors.text.default, themeVars.colors.text.muted, themeVars.colors.surface.canvas, themeVars.colors.surface.brand],
+  borderColor: [themeVars.colors.text.default, themeVars.colors.text.muted, themeVars.colors.surface.canvas, themeVars.colors.surface.brand],
+  gap: [themeVars.space[0], themeVars.space[1], themeVars.space[2], themeVars.space[3], themeVars.space[4], themeVars.space[5], customSpacingVariable],
+  paddingInlineStart: [themeVars.space[0], themeVars.space[1], themeVars.space[2], themeVars.space[3], themeVars.space[4], themeVars.space[5], customSpacingVariable],
+  paddingInlineEnd: [themeVars.space[0], themeVars.space[1], themeVars.space[2], themeVars.space[3], themeVars.space[4], themeVars.space[5], customSpacingVariable]
+}
+```
+
+An array in `values` accepts the listed values directly, as in the example above.  
+An object in `values` instead maps names to values:
+
+```typescript
+const { css: namedCss } = defineRules({
+  properties: defineRules.properties([
+    {
+      properties: ["color", "backgroundColor"],
+      values: { muted: themeVars.colors.text.muted }
+    }
+  ])
+});
+
+namedCss({ color: "muted" });
+```
+
+The helper assigns `values` to each target property as-is.  
+It does not recursively flatten a theme tree or infer target properties from token names.
+
+Select nested leaves explicitly, and use `[...themeVars.space, customSpacingVariable]` to combine array values.
+
+If several entries target the same property, the last entry's `values` replace the earlier definition.
+
+## 13. Reusable shortcuts
 
 Shortcuts can be packaged once and re-used across projects.
 
-`defineRules.shortcutSpec()` collects a dictionary of shortcut handlers, tags them with metadata, and exposes a typed object that can be spread into any ruleset.
+`defineRules.shortcuts()` collects a dictionary of shortcut handlers, tags them with metadata, and exposes a typed object that can be passed to `defineRules({ shortcuts })` or spread alongside other shortcuts.
 
 The helper is generic over the shape of `properties`; if you omit the generic, it defaults to `CSSProperties`, so the handlers always know which CSS props are safe to emit.
 
@@ -792,7 +793,7 @@ import type { CSSProperties } from "@mincho-js/css";
 
 type SpacingProps = Pick<CSSProperties, "gap" | "paddingInlineStart" | "paddingInlineEnd">;
 
-const spacingShortcuts = defineRules.shortcutSpec<SpacingProps>({
+const spacingShortcuts = defineRules.shortcuts<SpacingProps>({
   // Plain alias -> property
   pl: "paddingInlineStart",
   pr: "paddingInlineEnd",
@@ -811,7 +812,7 @@ const spacingShortcuts = defineRules.shortcutSpec<SpacingProps>({
   }
 });
 
-const motionShortcuts = defineRules.shortcutSpec({
+const motionShortcuts = defineRules.shortcuts({
   motion(value: string) {
     return { transition: value || "color 150ms ease" } satisfies CSSProperties;
   },
@@ -848,6 +849,51 @@ const pill = css([
 ]);
 ```
 
+## 14. Reusable conditions
+
+`defineRules.conditions()` validates named condition definitions and preserves their names in the returned type.  
+The result can be passed to `defineRules({ conditions })` or spread alongside local conditions.
+
+All three helpers build reusable definitions for their matching options. For example, screen and print rulesets can share the same definitions:
+
+```typescript
+const properties = defineRules.properties([
+  {
+    properties: ["paddingInlineStart", "paddingInlineEnd"],
+    values: [0, 4, 8, 16]
+  }
+]);
+
+const shortcuts = defineRules.shortcuts({
+  px: ["paddingInlineStart", "paddingInlineEnd"]
+});
+
+const conditions = defineRules.conditions({
+  mobile: {},
+  desktop: { "@media": "screen and (min-width: 1024px)" },
+  print: { "@media": "print" }
+});
+
+const screenRules = defineRules({
+  properties,
+  shortcuts,
+  conditions
+});
+
+const printRules = defineRules({
+  properties,
+  shortcuts,
+  conditions,
+  defaultCondition: "print"
+});
+
+screenRules.css({ px: 4, _desktop: { px: 16 } });
+printRules.css({ px: 8 });
+```
+
+`defaultCondition` and `compoundConditions` remain options on each ruleset, so shared condition definitions can be used with different defaults and combination policies.  
+A shared `compoundConditions` array can be reused in the same way.
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
@@ -858,7 +904,7 @@ const pill = css([
 Arrays describe allowed property values; object maps translate input keys to values or style objects.  
 Functions can compute those values during authoring.
 
-`propertyValues()` only builds this constraint map; it emits no CSS.
+`defineRules.properties()`, `defineRules.shortcuts()`, and `defineRules.conditions()` build reusable configuration objects; they emit no CSS.
 
 Style inputs are resolved in array order and object property order.  
 Shortcuts expand recursively, property resolvers produce CSS declarations, and named conditions add their media queries or selectors.
